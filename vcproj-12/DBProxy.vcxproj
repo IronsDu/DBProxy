@@ -1,0 +1,194 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{42B1228D-B96E-42E9-BA3C-BCD6902E57C7}</ProjectGuid>
+    <RootNamespace>DBProxy</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IntDir>$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <IntDir>$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\3rdparty\net;..\3rdparty\utils;..\3rdparty\ssdb;..\3rdparty\lua-5.1.4\src;..\3rdparty\luatinker;..\3rdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <AdditionalIncludeDirectories>..\3rdparty\net;..\3rdparty\utils;..\3rdparty\ssdb;..\3rdparty\lua-5.1.4\src;..\3rdparty\luatinker;..\3rdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lapi.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lauxlib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lbaselib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lcode.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldblib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldebug.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldo.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldump.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lfunc.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lgc.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\linit.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\liolib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\llex.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lmathlib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lmem.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\loadlib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lobject.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lopcodes.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\loslib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lparser.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lstate.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lstring.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lstrlib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ltable.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ltablib.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ltm.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lundump.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lvm.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lzio.c" />
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\print.c" />
+    <ClCompile Include="..\3rdparty\luatinker\lua_tinker.cpp" />
+    <ClCompile Include="..\3rdparty\net\buffer.c" />
+    <ClCompile Include="..\3rdparty\net\CurrentThread.cpp" />
+    <ClCompile Include="..\3rdparty\net\DataSocket.cpp" />
+    <ClCompile Include="..\3rdparty\net\EventLoop.cpp" />
+    <ClCompile Include="..\3rdparty\net\NetSession.cpp" />
+    <ClCompile Include="..\3rdparty\net\NetThreadSession.cpp" />
+    <ClCompile Include="..\3rdparty\net\SocketLibFunction.c" />
+    <ClCompile Include="..\3rdparty\net\TCPService.cpp" />
+    <ClCompile Include="..\3rdparty\net\WrapTCPService.cpp" />
+    <ClCompile Include="..\3rdparty\ssdb\RedisRequest.cpp" />
+    <ClCompile Include="..\3rdparty\ssdb\RedisSSDBCovert.cpp" />
+    <ClCompile Include="..\3rdparty\ssdb\SSDBMultiClient.cpp" />
+    <ClCompile Include="..\3rdparty\ssdb\SSDBProtocol.cpp" />
+    <ClCompile Include="..\3rdparty\utils\lua_readtable.cpp" />
+    <ClCompile Include="..\3rdparty\utils\ox_file.cpp" />
+    <ClCompile Include="..\3rdparty\utils\systemlib.c" />
+    <ClCompile Include="..\3rdparty\utils\timer.cpp" />
+    <ClCompile Include="..\src\Backend.cpp" />
+    <ClCompile Include="..\src\BaseWaitReply.cpp" />
+    <ClCompile Include="..\src\Client.cpp" />
+    <ClCompile Include="..\src\DBProxyServer.cpp" />
+    <ClCompile Include="..\src\RedisWaitReply.cpp" />
+    <ClCompile Include="..\src\SSDBWaitReply.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lapi.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lauxlib.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lcode.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ldebug.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ldo.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lfunc.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lgc.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\llex.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\llimits.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lmem.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lobject.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lopcodes.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lparser.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lstate.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lstring.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ltable.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ltm.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lua.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\luaconf.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lualib.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lundump.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lvm.h" />
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lzio.h" />
+    <ClInclude Include="..\3rdparty\luatinker\lua_tinker.h" />
+    <ClInclude Include="..\3rdparty\net\buffer.h" />
+    <ClInclude Include="..\3rdparty\net\Channel.h" />
+    <ClInclude Include="..\3rdparty\net\CurrentThread.h" />
+    <ClInclude Include="..\3rdparty\net\DataSocket.h" />
+    <ClInclude Include="..\3rdparty\net\dllconf.h" />
+    <ClInclude Include="..\3rdparty\net\EventLoop.h" />
+    <ClInclude Include="..\3rdparty\net\LogicNetSession.h" />
+    <ClInclude Include="..\3rdparty\net\NetSession.h" />
+    <ClInclude Include="..\3rdparty\net\NetThreadSession.h" />
+    <ClInclude Include="..\3rdparty\net\platform.h" />
+    <ClInclude Include="..\3rdparty\net\SocketLibFunction.h" />
+    <ClInclude Include="..\3rdparty\net\SocketLibTypes.h" />
+    <ClInclude Include="..\3rdparty\net\TCPService.h" />
+    <ClInclude Include="..\3rdparty\net\typeids.h" />
+    <ClInclude Include="..\3rdparty\net\WrapTCPService.h" />
+    <ClInclude Include="..\3rdparty\ssdb\platform.h" />
+    <ClInclude Include="..\3rdparty\ssdb\RedisParse.h" />
+    <ClInclude Include="..\3rdparty\ssdb\RedisRequest.h" />
+    <ClInclude Include="..\3rdparty\ssdb\RedisSSDBCovert.h" />
+    <ClInclude Include="..\3rdparty\ssdb\socketlibtypes.h" />
+    <ClInclude Include="..\3rdparty\ssdb\SSDBMultiClient.h" />
+    <ClInclude Include="..\3rdparty\ssdb\SSDBProtocol.h" />
+    <ClInclude Include="..\3rdparty\utils\lua_readtable.h" />
+    <ClInclude Include="..\3rdparty\utils\msgqueue.h" />
+    <ClInclude Include="..\3rdparty\utils\ox_file.h" />
+    <ClInclude Include="..\3rdparty\utils\systemlib.h" />
+    <ClInclude Include="..\3rdparty\utils\timer.h" />
+    <ClInclude Include="..\src\Backend.h" />
+    <ClInclude Include="..\src\BaseWaitReply.h" />
+    <ClInclude Include="..\src\Client.h" />
+    <ClInclude Include="..\src\RedisWaitReply.h" />
+    <ClInclude Include="..\src\SSDBWaitReply.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

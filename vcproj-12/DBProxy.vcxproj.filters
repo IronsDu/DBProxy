@@ -1,0 +1,366 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="lua">
+      <UniqueIdentifier>{0ea2ccae-3b6b-499f-94f3-9be83152d22d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="luatinker">
+      <UniqueIdentifier>{aecfc51c-e2a9-44b9-b0c0-265be43c5450}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="net">
+      <UniqueIdentifier>{1a3fff62-3794-4574-9652-e921be8e60ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="utils">
+      <UniqueIdentifier>{3a02e791-d3ac-4da8-804c-26f279a71f43}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dbutils">
+      <UniqueIdentifier>{9232d8b0-e8ee-408c-84f2-d24ad95144a5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\Backend.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\BaseWaitReply.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Client.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\DBProxyServer.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\RedisWaitReply.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SSDBWaitReply.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ltm.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lundump.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lvm.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lzio.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\print.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lapi.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lauxlib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lbaselib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lcode.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldblib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldebug.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldo.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ldump.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lfunc.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lgc.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\linit.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\liolib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\llex.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lmathlib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lmem.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\loadlib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lobject.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lopcodes.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\loslib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lparser.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lstate.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lstring.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\lstrlib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ltable.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua-5.1.4\src\ltablib.c">
+      <Filter>lua</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\luatinker\lua_tinker.cpp">
+      <Filter>luatinker</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\buffer.c">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\CurrentThread.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\DataSocket.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\EventLoop.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\SocketLibFunction.c">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\TCPService.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\WrapTCPService.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\ssdb\RedisRequest.cpp">
+      <Filter>dbutils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\ssdb\RedisSSDBCovert.cpp">
+      <Filter>dbutils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\ssdb\SSDBMultiClient.cpp">
+      <Filter>dbutils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\ssdb\SSDBProtocol.cpp">
+      <Filter>dbutils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\utils\timer.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\NetThreadSession.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\net\NetSession.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\utils\systemlib.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\utils\ox_file.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\utils\lua_readtable.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\Backend.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\BaseWaitReply.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Client.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\RedisWaitReply.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\SSDBWaitReply.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lapi.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lauxlib.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lcode.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ldebug.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ldo.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lfunc.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lgc.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\llex.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\llimits.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lmem.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lobject.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lopcodes.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lparser.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lstate.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lstring.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ltable.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\ltm.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lua.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\luaconf.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lualib.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lundump.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lvm.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua-5.1.4\src\lzio.h">
+      <Filter>lua</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\luatinker\lua_tinker.h">
+      <Filter>luatinker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\buffer.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\Channel.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\CurrentThread.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\DataSocket.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\dllconf.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\EventLoop.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\platform.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\SocketLibFunction.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\SocketLibTypes.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\TCPService.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\typeids.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\WrapTCPService.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\RedisRequest.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\RedisSSDBCovert.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\socketlibtypes.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\SSDBMultiClient.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\SSDBProtocol.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\platform.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\ssdb\RedisParse.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\utils\timer.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\NetThreadSession.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\utils\msgqueue.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\LogicNetSession.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\net\NetSession.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\utils\systemlib.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\utils\ox_file.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\utils\lua_readtable.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
