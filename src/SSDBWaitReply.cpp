@@ -4,10 +4,55 @@
 #include "SSDBProtocol.h"
 #include "SSDBWaitReply.h"
 
+static const std::string SSDB_OK = "ok";
+static const std::string SSDB_ERROR = "error";
+
+static void syncSSDBStrList(ClientLogicSession* client, const std::vector<std::string>& strList)
+{
+    static SSDBProtocolRequest strsResponse;
+    strsResponse.init();
+
+    strsResponse.writev(strList);
+    strsResponse.endl();
+
+    client->send(strsResponse.getResult(), strsResponse.getResultLen());
+}
+
+StrListSSDBReply::StrListSSDBReply(ClientLogicSession* client) : BaseWaitReply(client)
+{
+}
+
+void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, const char* buffer, int len)
+{
+
+}
+
+void StrListSSDBReply::mergeAndSend(ClientLogicSession* client)
+{
+    mStrListResponse.endl();
+    client->send(mStrListResponse.getResult(), mStrListResponse.getResultLen());
+}
+
+void StrListSSDBReply::pushStr(std::string&& str)
+{
+    mStrListResponse.writev(str);
+}
+
+void StrListSSDBReply::pushStr(const std::string& str)
+{
+    mStrListResponse.writev(str);
+}
+
+void StrListSSDBReply::pushStr(const char* str)
+{
+    mStrListResponse.appendStr(str);
+}
+
 SSDBSingleWaitReply::SSDBSingleWaitReply(ClientLogicSession* client) : BaseWaitReply(client)
 {
 }
 
+/*  TODO::如果这个回复就是第一个pending reply，那么可以不用缓存而直接发送给客户端(减少内存拷贝)  */
 void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const char* buffer, int len)
 {
     for (auto& v : mWaitResponses)
@@ -22,18 +67,13 @@ void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const char* b
 
 void SSDBSingleWaitReply::mergeAndSend(ClientLogicSession* client)
 {
-    assert(mWaitResponses.size() == 1);
-    if (!mIsError)
+    if (mErrorCode != nullptr)
     {
-        client->send(mWaitResponses.front().reply->c_str(), mWaitResponses.front().reply->size());
+        syncSSDBStrList(client, { SSDB_ERROR, *mErrorCode });
     }
     else
     {
-        /*  TODO::缓存错误的response对象,进行多次使用，避免多次构造   */
-        SSDBProtocolRequest errorResponse;
-        errorResponse.writev("error");
-        errorResponse.endl();
-        client->send(errorResponse.getResult(), errorResponse.getResultLen());
+        client->send(mWaitResponses.front().reply->c_str(), mWaitResponses.front().reply->size());
     }
 }
 
@@ -62,12 +102,9 @@ void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, const char*
 
 void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
 {
-    if (mIsError)
+    if (mErrorCode != nullptr)
     {
-        SSDBProtocolRequest errorResponse;
-        errorResponse.writev("error");
-        errorResponse.endl();
-        client->send(errorResponse.getResult(), errorResponse.getResultLen());
+        syncSSDBStrList(client, { SSDB_ERROR, *mErrorCode });
     }
     else
     {
@@ -80,7 +117,6 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
             string* errorReply = nullptr;
             int64_t num = 0;
 
-            SSDBProtocolRequest megreResponse;
             for (auto& v : mWaitResponses)
             {
                 int64_t tmp;
@@ -101,10 +137,12 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
             }
             else
             {
-                SSDBProtocolRequest megreResponse;
-                megreResponse.writev("ok", num);
-                megreResponse.endl();
-                client->send(megreResponse.getResult(), megreResponse.getResultLen());
+                static SSDBProtocolRequest response;
+                response.init();
+
+                response.writev(SSDB_OK, num);
+                response.endl();
+                client->send(response.getResult(), response.getResultLen());
             }
         }
     }
@@ -135,12 +173,9 @@ void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, const char*
 
 void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
 {
-    if (mIsError)
+    if (mErrorCode != nullptr)
     {
-        SSDBProtocolRequest errorResponse;
-        errorResponse.writev("error");
-        errorResponse.endl();
-        client->send(errorResponse.getResult(), errorResponse.getResultLen());
+        syncSSDBStrList(client, { SSDB_ERROR, *mErrorCode });
     }
     else
     {
@@ -151,14 +186,13 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
         else
         {
             string* errorReply = nullptr;
-            int64_t num = 0;
 
-            SSDBProtocolRequest megreResponse;
-            vector<string> kvs;
+            static vector<Bytes> kvs;
+            kvs.clear();
 
             for (auto& v : mWaitResponses)
             {
-                if (!read_list(v.ssdbReply, &kvs).ok())
+                if (!read_bytes(v.ssdbReply, &kvs).ok())
                 {
                     errorReply = v.reply;
                     break;
@@ -171,10 +205,17 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
             }
             else
             {
-                SSDBProtocolRequest megreResponse;
-                megreResponse.writev("ok", kvs);
-                megreResponse.endl();
-                client->send(megreResponse.getResult(), megreResponse.getResultLen());
+                static SSDBProtocolRequest strsResponse;
+                strsResponse.init();
+
+                strsResponse.writev(SSDB_OK);
+                for (auto& v : kvs)
+                {
+                    strsResponse.appendStr(v.buffer, v.len);
+                }
+                
+                strsResponse.endl();
+                client->send(strsResponse.getResult(), strsResponse.getResultLen());
             }
         }
     }

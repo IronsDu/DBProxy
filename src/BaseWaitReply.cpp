@@ -1,7 +1,7 @@
 #include "SSDBProtocol.h"
 #include "BaseWaitReply.h"
 
-BaseWaitReply::BaseWaitReply(ClientLogicSession* client) : mClient(client), mIsError(false)
+BaseWaitReply::BaseWaitReply(ClientLogicSession* client) : mClient(client), mErrorCode(nullptr)
 {}
 
 BaseWaitReply::~BaseWaitReply()
@@ -21,6 +21,12 @@ BaseWaitReply::~BaseWaitReply()
     }
 
     mWaitResponses.clear();
+
+    if (mErrorCode != nullptr)
+    {
+        delete mErrorCode;
+        mErrorCode = nullptr;
+    }
 }
 
 ClientLogicSession* BaseWaitReply::getClient()
@@ -35,14 +41,14 @@ void BaseWaitReply::addWaitServer(int64_t serverSocketID)
     mWaitResponses.push_back(tmp);
 }
 
-void BaseWaitReply::setError()
+void BaseWaitReply::setError(const char* errorCode)
 {
-    mIsError = true;
+    mErrorCode = new std::string(errorCode);
 }
 
 bool BaseWaitReply::hasError() const
 {
-    return mIsError;
+    return mErrorCode != nullptr;
 }
 
 bool BaseWaitReply::isAllCompleted() const

@@ -76,7 +76,7 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
                 }
                 else
                 {
-                    mCache += string(parseStartPos, parseEndPos - parseStartPos);
+                    mCache.append(parseStartPos, parseEndPos - parseStartPos);
                     tmp.buffer = new string(std::move(mCache));
                     mCache.clear();
                 }
@@ -86,7 +86,7 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
             }
             else if (parseRet == REDIS_RETRY)
             {
-                mCache += string(parseStartPos, parseEndPos - parseStartPos);
+                mCache.append(parseStartPos, parseEndPos - parseStartPos);
                 break;
             }
             else
@@ -120,6 +120,12 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
     return totalLen;
 }
 
+ClientLogicSession::ClientLogicSession()
+{
+    mNeedAuth = false;
+    mIsAuth = false;
+}
+
 void ClientLogicSession::onEnter()
 {
 
@@ -130,26 +136,36 @@ void ClientLogicSession::onClose()
 
 }
 
-/*  TODO::自定义sharding方案，能够开放给开发者进行特化  */
 extern bool sharding_key(const char* str, int len, int& serverID);
+
+void ClientLogicSession::pushSSDBStrListReply(const std::vector< const char*> &strlist)
+{
+    std::shared_ptr<StrListSSDBReply> reply = std::make_shared<StrListSSDBReply>(this);
+    for (auto& v : strlist)
+    {
+        reply->pushStr(v);
+    }
+    mPendingReply.push_back(reply);
+    processCompletedReply();
+}
 
 void ClientLogicSession::pushSSDBErrorReply(const char* error)
 {
-    BaseWaitReply::PTR w = std::make_shared<SSDBSingleWaitReply>(this);
-    w->setError();
-    mPendingReply.push_back(w);
+    pushSSDBStrListReply({ "error", error });
 }
 
 void ClientLogicSession::pushRedisErrorReply(const char* error)
 {
     BaseWaitReply::PTR w = std::make_shared<RedisErrorReply>(this, error);
     mPendingReply.push_back(w);
+    processCompletedReply();
 }
 
 void ClientLogicSession::pushRedisStatusReply(const char* status)
 {
     BaseWaitReply::PTR w = std::make_shared<RedisStatusReply>(this, status);
     mPendingReply.push_back(w);
+    processCompletedReply();
 }
 
 void ClientLogicSession::onMsg(const char* buffer, int len)
@@ -167,23 +183,38 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
             Bytes* op = msg->ssdbQuery->getByIndex(0);
             if (op != nullptr)
             {
-                /*todo::处理auth命令*/
                 BaseWaitReply::PTR w = nullptr;
-                if (strncmp("multi_set", op->buffer, op->len) == 0)
+                if (strncmp("auth", op->buffer, op->len) == 0)
                 {
-                    isSuccess = procSSDBMultiSet(msg->ssdbQuery, msg->buffer);
-                }
-                else if (strncmp("multi_get", op->buffer, op->len) == 0)
-                {
-                    isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(this), msg->ssdbQuery, msg->buffer, "multi_get");
-                }
-                else if (strncmp("multi_del", op->buffer, op->len) == 0)
-                {
-                    isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(this), msg->ssdbQuery, msg->buffer, "multi_del");
+                    isSuccess = procSSDBAuth(msg->ssdbQuery, msg->buffer);
                 }
                 else
                 {
-                    isSuccess = procSSDBSingleCommand(msg->ssdbQuery, msg->buffer);
+                    if (mNeedAuth && !mIsAuth)
+                    {
+                        pushSSDBStrListReply({ "noauth", "authentication required" });
+                        isSuccess = true;
+                    }
+                    else if (strncmp("ping", op->buffer, op->len) == 0)
+                    {
+                        isSuccess = procSSDBPing(msg->ssdbQuery, msg->buffer);
+                    }
+                    else if (strncmp("multi_set", op->buffer, op->len) == 0)
+                    {
+                        isSuccess = procSSDBMultiSet(msg->ssdbQuery, msg->buffer);
+                    }
+                    else if (strncmp("multi_get", op->buffer, op->len) == 0)
+                    {
+                        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(this), msg->ssdbQuery, msg->buffer, "multi_get");
+                    }
+                    else if (strncmp("multi_del", op->buffer, op->len) == 0)
+                    {
+                        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(this), msg->ssdbQuery, msg->buffer, "multi_del");
+                    }
+                    else
+                    {
+                        isSuccess = procSSDBSingleCommand(msg->ssdbQuery, msg->buffer);
+                    }
                 }
             }
         }
@@ -191,8 +222,7 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
         if (!isSuccess)
         {
             /*  模拟一个错误  */
-            pushSSDBErrorReply("error");
-            processCompletedReply();
+            pushSSDBErrorReply("command not process");
         }
     }
     else
@@ -201,7 +231,6 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
         if (strncmp(msg->buffer->c_str(), "PING\r\n", 6) == 0)
         {
             pushRedisStatusReply("PONG");
-            processCompletedReply();
         }
         else
         {
@@ -211,7 +240,6 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
             {
                 /*  模拟一个错误  */
                 pushRedisErrorReply("no error for key");
-                processCompletedReply();
             }
         }
     }
@@ -227,6 +255,35 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
         msg->msg = nullptr;
     }
     delete msg->buffer;
+}
+
+bool ClientLogicSession::procSSDBAuth(SSDBProtocolResponse* request, std::string* requestStr)
+{
+    if (request->getBuffersLen() == 2)
+    {
+        Bytes* p = request->getByIndex(1);
+        if (!mNeedAuth || strncmp(p->buffer, mPassword.c_str(), p->len) == 0)
+        {
+            mIsAuth = true;
+            pushSSDBStrListReply({ "ok" });
+        }
+        else
+        {
+            pushSSDBErrorReply("invalid password");
+        }
+    }
+    else
+    {
+        pushSSDBStrListReply({ "client_error" });
+    }
+
+    return true;
+}
+
+bool ClientLogicSession::procSSDBPing(SSDBProtocolResponse* , std::string* requestStr)
+{
+    pushSSDBStrListReply({ "ok" });
+    return true;
 }
 
 bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::string* requestStr)
@@ -288,7 +345,7 @@ bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::st
                 request2Backend.appendStr("multi_set");
                 for (auto& k : v.second)
                 {
-                    request2Backend.appendBlock(k.buffer, k.len);
+                    request2Backend.appendStr(k.buffer, k.len);
                 }
                 request2Backend.endl();
 
@@ -357,7 +414,7 @@ bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitRepl
                 request2Backend.appendStr(command);
                 for (auto& k : v.second)
                 {
-                    request2Backend.appendBlock(k.buffer, k.len);
+                    request2Backend.appendStr(k.buffer, k.len);
                 }
                 request2Backend.endl();
 
@@ -418,7 +475,7 @@ void ClientLogicSession::processCompletedReply()
 {
     while (!mPendingReply.empty())
     {
-        auto w = mPendingReply.front();
+        auto& w = mPendingReply.front();
         if (w->isAllCompleted() || w->hasError())
         {
             w->mergeAndSend(this);

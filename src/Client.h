@@ -30,6 +30,7 @@ private:
 class ClientLogicSession : public BaseLogicSession, public std::enable_shared_from_this<ClientLogicSession>
 {
 public:
+    ClientLogicSession();
     /*  处理等待队列中已经完成的请求以及确认出错的请求 */
     void            processCompletedReply();
 private:
@@ -38,11 +39,14 @@ private:
     virtual void    onMsg(const char* buffer, int len) override;
 
 private:
+    void            pushSSDBStrListReply(const std::vector < const char* > &strlist);
     void            pushSSDBErrorReply(const char* error);
     void            pushRedisErrorReply(const char* error);
     void            pushRedisStatusReply(const char* status);
 
 private:
+    bool            procSSDBAuth(SSDBProtocolResponse*, std::string* requestStr);
+    bool            procSSDBPing(SSDBProtocolResponse*, std::string* requestStr);
     bool            procSSDBMultiSet(SSDBProtocolResponse*, std::string* requestStr);
     bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, SSDBProtocolResponse*, std::string* requestStr, const char* command);
     bool            procSSDBSingleCommand(SSDBProtocolResponse*, std::string* requestStr);
@@ -50,7 +54,10 @@ private:
     bool            processRedisSingleCommand(parse_tree* parse, std::string* requestStr);
 
 private:
-    std::deque<std::shared_ptr<BaseWaitReply>>    mPendingReply;
+    std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;
+    bool                                            mNeedAuth;
+    bool                                            mIsAuth;
+    string                                          mPassword;
 };
 
 #endif

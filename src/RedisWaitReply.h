@@ -33,7 +33,7 @@ private:
     void            mergeAndSend(ClientLogicSession*);
 
 private:
-    std::string     mError;
+    std::string     mErrorCode;
 };
 
 class RedisWrongTypeReply : public BaseWaitReply

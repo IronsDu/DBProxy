@@ -24,16 +24,15 @@ void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const char* 
 
 void RedisSingleWaitReply::mergeAndSend(ClientLogicSession* client)
 {
-    if (!mIsError)
+    if (mErrorCode != nullptr)
     {
-        client->send(mWaitResponses.front().reply->c_str(), mWaitResponses.front().reply->size());
+        RedisErrorReply tmp(client, mErrorCode->c_str());
+        BaseWaitReply* f = &tmp;
+        f->mergeAndSend(client);
     }
     else
     {
-        /*  TODO::缓存错误的response对象,进行多次使用，避免多次构造   */
-        RedisErrorReply tmp(client, "error");   /*todo::使用错误码构造*/
-        BaseWaitReply* f = &tmp;
-        f->mergeAndSend(client);
+        client->send(mWaitResponses.front().reply->c_str(), mWaitResponses.front().reply->size());
     }
 }
 
@@ -52,7 +51,7 @@ void RedisStatusReply::mergeAndSend(ClientLogicSession* client)
     client->send(tmp.c_str(), tmp.size());
 }
 
-RedisErrorReply::RedisErrorReply(ClientLogicSession* client, const char* error) : BaseWaitReply(client), mError(error)
+RedisErrorReply::RedisErrorReply(ClientLogicSession* client, const char* error) : BaseWaitReply(client), mErrorCode(error)
 {
 }
 
@@ -62,7 +61,7 @@ void RedisErrorReply::onBackendReply(int64_t dbServerSocketID, const char* buffe
 
 void RedisErrorReply::mergeAndSend(ClientLogicSession* client)
 {
-    std::string tmp = "-ERR " + mError;
+    std::string tmp = "-ERR " + mErrorCode;
     tmp += "\r\n";
     client->send(tmp.c_str(), tmp.size());
 }

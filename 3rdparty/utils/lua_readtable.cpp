@@ -49,10 +49,8 @@ void readluatable(lua_State* l, msvalue_s* outmap)
 
         if(k_type == LUA_TNUMBER)
         {
-            char temp[1024];
-            int key_value = lua_tonumber(l, -2);
-            sprintf(temp, "%d", key_value);
-            k = temp;
+            lua_Number key_value = lua_tonumber(l, -2);
+            k = std::to_string(key_value);
         }
         else if(k_type == LUA_TSTRING)
         {
@@ -76,10 +74,8 @@ void readluatable(lua_State* l, msvalue_s* outmap)
         }
         else if(v_type == LUA_TNUMBER)
         {
-            char temp[1024];
-            int v_value = lua_tonumber(l, -1);
-            sprintf(temp, "%d", v_value);
-            v = temp;
+            lua_Number v_value = lua_tonumber(l, -1);
+            v = std::to_string(v_value);
             (*outmap->_map)[k] = new msvalue_s(v);
         }
         else

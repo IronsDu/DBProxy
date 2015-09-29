@@ -57,7 +57,7 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
                 }
                 else
                 {
-                    mCache += string(parseStartPos, parseEndPos - parseStartPos);
+                    mCache.append(parseStartPos, parseEndPos - parseStartPos);
                     pushDataMsgToLogicThread(mCache.c_str(), mCache.size());
                     mCache.clear();
                 }
@@ -67,7 +67,7 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
             }
             else if (parseRet == REDIS_RETRY)
             {
-                mCache += string(parseStartPos, parseEndPos - parseStartPos);
+                mCache.append(parseStartPos, parseEndPos - parseStartPos);
                 break;
             }
             else
@@ -115,11 +115,11 @@ void BackendLogicSession::onClose()
     while (!mPendingWaitReply.empty())
     {
         ClientLogicSession* client = nullptr;
-        auto w = mPendingWaitReply.front();
+        auto& w = mPendingWaitReply.front();
         auto wp = w.lock();
         if (wp != nullptr)
         {
-            wp->setError();
+            wp->setError("backend error");
             client = wp->getClient();
         }
         mPendingWaitReply.pop();
@@ -151,12 +151,12 @@ void BackendLogicSession::onMsg(const char* buffer, int len)
     if (!mPendingWaitReply.empty())
     {
         ClientLogicSession* client = nullptr;
-        auto w = mPendingWaitReply.front();
-        auto wp = w.lock();
-        if (wp != nullptr)
+        auto& replyPtr = mPendingWaitReply.front();
+        auto reply = replyPtr.lock();
+        if (reply != nullptr)
         {
-            wp->onBackendReply(getSocketID(), buffer, len);
-            client = wp->getClient();
+            reply->onBackendReply(getSocketID(), buffer, len);
+            client = reply->getClient();
         }
         mPendingWaitReply.pop();
         if (client != nullptr)

@@ -7,6 +7,21 @@
 
 #include "BaseWaitReply.h"
 
+class StrListSSDBReply : public BaseWaitReply
+{
+public:
+    StrListSSDBReply(ClientLogicSession* client);
+    void            pushStr(std::string&& str);
+    void            pushStr(const std::string& str);
+    void            pushStr(const char* str);
+private:
+    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    void            mergeAndSend(ClientLogicSession*);
+
+private:
+    SSDBProtocolRequest         mStrListResponse;
+};
+
 class SSDBSingleWaitReply : public BaseWaitReply
 {
 public:

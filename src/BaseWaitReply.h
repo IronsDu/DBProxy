@@ -33,7 +33,7 @@ public:
     bool            hasError() const;
 
     /*  设置出现错误    */
-    void            setError();
+    void            setError(const char* errorCode);
 
 protected:
 
@@ -54,7 +54,7 @@ protected:
     std::vector<PendingResponseStatus>  mWaitResponses; /*  等待的各个服务器返回值的状态  */
 
     ClientLogicSession*                 mClient;
-    bool                                mIsError;       /*todo::使用字符串作为错误码*/
+    std::string*                        mErrorCode;
 };
 
 #endif
