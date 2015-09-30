@@ -7,6 +7,7 @@
 
 class ClientLogicSession;
 class SSDBProtocolResponse;
+struct parse_tree;
 
 class BaseWaitReply
 {
@@ -42,13 +43,17 @@ protected:
         PendingResponseStatus()
         {
             dbServerSocketID = 0;
-            reply = nullptr;
+            responseBinary = nullptr;
             ssdbReply = nullptr;
+            redisReply = nullptr;
+            forceOK = false;
         }
 
         int64_t                 dbServerSocketID;       /*  此等待的response所在的db服务器的id    */
-        std::string*            reply;                  /*  response */
+        std::string*            responseBinary;         /*  原始的(未解析)response报文 */
         SSDBProtocolResponse*   ssdbReply;              /*  解析好的ssdb response*/
+        parse_tree*             redisReply;
+        bool                    forceOK;                /*  是否强制设置成功    */
     };
 
     std::vector<PendingResponseStatus>  mWaitResponses; /*  等待的各个服务器返回值的状态  */

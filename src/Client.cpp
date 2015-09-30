@@ -3,6 +3,7 @@
 #include "SSDBProtocol.h"
 #include "SSDBWaitReply.h"
 #include "RedisWaitReply.h"
+#include "RedisRequest.h"
 
 #include "Client.h"
 
@@ -234,8 +235,28 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
         }
         else
         {
-            /*  处理redis命令, TODO::处理mset、mget、del   */
-            bool isSuccess = processRedisSingleCommand(msg->msg, msg->buffer);
+            const char* op = msg->msg->childs[0]->reply->str;
+            const size_t oplen = msg->msg->childs[0]->reply->len;
+
+            bool isSuccess = false;
+
+            if (strncmp(op, "mget", oplen) == 0)
+            {
+                isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(this), msg->msg, msg->buffer, "mget");
+            }
+            else if (strncmp(op, "mset", oplen) == 0)
+            {
+                isSuccess = processRedisMset(msg->msg, msg->buffer);
+            }
+            else if (strncmp(op, "del", oplen) == 0)
+            {
+                isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(this), msg->msg, msg->buffer, "del");
+            }
+            else
+            {
+                isSuccess = processRedisSingleCommand(msg->msg, msg->buffer);
+            }
+            
             if (!isSuccess)
             {
                 /*  模拟一个错误  */
@@ -335,7 +356,7 @@ bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::st
         }
         else
         {
-            SSDBProtocolRequest request2Backend;
+            static SSDBProtocolRequest request2Backend;
 
             for (auto& v : kvsMap)
             {
@@ -404,7 +425,7 @@ bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitRepl
         }
         else
         {
-            SSDBProtocolRequest request2Backend;
+            static SSDBProtocolRequest request2Backend;
 
             for (auto& v : serverKs)
             {
@@ -456,7 +477,7 @@ bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, std::strin
     bool isSuccess = false;
 
     int serverID;
-    if (sharding_key(parse->tmp_buff, strlen(parse->tmp_buff), serverID))
+    if (sharding_key(parse->childs[1]->reply->str, parse->childs[1]->reply->len, serverID))
     {
         isSuccess = true;
         BaseWaitReply::PTR w = std::make_shared<RedisSingleWaitReply>(this);
@@ -464,6 +485,152 @@ bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, std::strin
         w->addWaitServer(server->getSocketID());
         server->pushPendingWaitReply(w);
         server->send(requestStr->c_str(), requestStr->size());
+
+        mPendingReply.push_back(w);
+    }
+
+    return isSuccess;
+}
+
+bool ClientLogicSession::processRedisMset(parse_tree* parse, std::string* requestStr)
+{
+    bool isSuccess = parse->reply->elements > 1 && (parse->reply->elements-1) % 2 == 0;
+
+    unordered_map<int, std::vector<Bytes>> serverKvs;
+
+    for (size_t i = 1; i < parse->reply->elements; i+=2)
+    {
+        int serverID;
+
+        const char* key = parse->childs[i]->reply->str;
+        int keyLen = parse->childs[i]->reply->len;
+        const char* value = parse->childs[i+1]->reply->str;
+        int valueLen = parse->childs[i + 1]->reply->len;
+
+        if (sharding_key(key, keyLen, serverID))
+        {
+            auto it = serverKvs.find(serverID);
+            if (it == serverKvs.end())
+            {
+                std::vector<Bytes> tmp;
+                tmp.push_back({key, keyLen});
+                tmp.push_back({value,valueLen});
+                serverKvs[serverID] = std::move(tmp);
+            }
+            else
+            {
+                (*it).second.push_back({key, keyLen});
+                (*it).second.push_back({value, valueLen});
+            }
+        }
+        else
+        {
+            isSuccess = false;
+            break;
+        }
+    }
+
+    if (isSuccess)
+    {
+        BaseWaitReply::PTR w = std::make_shared<RedisMsetWaitReply>(this);
+        if (serverKvs.size() == 1)
+        {
+            BackendLogicSession* server = findBackendByID((*serverKvs.begin()).first);
+
+            w->addWaitServer(server->getSocketID());
+            server->pushPendingWaitReply(w);
+            server->send(requestStr->c_str(), requestStr->size());
+        }
+        else
+        {
+            static RedisProtocolRequest request2Backend;
+
+            for (auto& v : serverKvs)
+            {
+                request2Backend.init();
+                BackendLogicSession* server = findBackendByID(v.first);
+                request2Backend.writev("mset");
+                for (auto& k : v.second)
+                {
+                    request2Backend.appendBinary(k.buffer, k.len);
+                }
+                request2Backend.endl();
+
+                w->addWaitServer(server->getSocketID());
+                server->pushPendingWaitReply(w);
+                server->send(request2Backend.getResult(), request2Backend.getResultLen());
+            }
+        }
+
+        mPendingReply.push_back(w);
+    }
+
+    return isSuccess;
+}
+
+bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::string* requestStr, const char* command)
+{
+    bool isSuccess = parse->reply->elements > 1;
+
+    unordered_map<int, std::vector<Bytes>> serverKs;
+
+    for (size_t i = 1; i < parse->reply->elements; ++i)
+    {
+        int serverID;
+        const char* key = parse->childs[i]->reply->str;
+        int keyLen = parse->childs[i]->reply->len;
+
+        if (sharding_key(key, keyLen, serverID))
+        {
+            auto it = serverKs.find(serverID);
+            if (it == serverKs.end())
+            {
+                std::vector<Bytes> tmp;
+                tmp.push_back({key, keyLen});
+                serverKs[serverID] = std::move(tmp);
+            }
+            else
+            {
+                (*it).second.push_back({key, keyLen});
+            }
+        }
+        else
+        {
+            isSuccess = false;
+            break;
+        }
+    }
+
+    if (isSuccess)
+    {
+        if (serverKs.size() == 1)
+        {
+            BackendLogicSession* server = findBackendByID((*serverKs.begin()).first);
+
+            w->addWaitServer(server->getSocketID());
+            server->pushPendingWaitReply(w);
+            server->send(requestStr->c_str(), requestStr->size());
+        }
+        else
+        {
+            static RedisProtocolRequest request2Backend;
+
+            for (auto& v : serverKs)
+            {
+                request2Backend.init();
+                BackendLogicSession* server = findBackendByID(v.first);
+                request2Backend.appendBinary(command, strlen(command));
+                for (auto& k : v.second)
+                {
+                    request2Backend.appendBinary(k.buffer, k.len);
+                }
+                request2Backend.endl();
+
+                w->addWaitServer(server->getSocketID());
+                server->pushPendingWaitReply(w);
+                server->send(request2Backend.getResult(), request2Backend.getResultLen());
+            }
+        }
 
         mPendingReply.push_back(w);
     }

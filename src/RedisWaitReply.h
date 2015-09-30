@@ -49,4 +49,31 @@ private:
     std::string     mWrongDetail;
 };
 
+class RedisMgetWaitReply : public BaseWaitReply
+{
+public:
+    RedisMgetWaitReply(ClientLogicSession* client);
+private:
+    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    void            mergeAndSend(ClientLogicSession*);
+};
+
+class RedisMsetWaitReply : public BaseWaitReply
+{
+public:
+    RedisMsetWaitReply(ClientLogicSession* client);
+private:
+    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    void            mergeAndSend(ClientLogicSession*);
+};
+
+class RedisDelWaitReply : public BaseWaitReply
+{
+public:
+    RedisDelWaitReply(ClientLogicSession* client);
+private:
+    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    void            mergeAndSend(ClientLogicSession*);
+};
+
 #endif

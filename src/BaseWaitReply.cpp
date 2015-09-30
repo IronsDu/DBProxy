@@ -1,4 +1,6 @@
 #include "SSDBProtocol.h"
+#include "RedisParse.h"
+
 #include "BaseWaitReply.h"
 
 BaseWaitReply::BaseWaitReply(ClientLogicSession* client) : mClient(client), mErrorCode(nullptr)
@@ -8,15 +10,20 @@ BaseWaitReply::~BaseWaitReply()
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.reply != nullptr)
+        if (v.responseBinary != nullptr)
         {
-            delete v.reply;
-            v.reply = nullptr;
+            delete v.responseBinary;
+            v.responseBinary = nullptr;
         }
         if (v.ssdbReply != nullptr)
         {
             delete v.ssdbReply;
             v.ssdbReply = nullptr;
+        }
+        if (v.redisReply != nullptr)
+        {
+            parse_tree_del(v.redisReply);
+            v.redisReply = nullptr;
         }
     }
 
@@ -57,7 +64,7 @@ bool BaseWaitReply::isAllCompleted() const
 
     for (auto& v : mWaitResponses)
     {
-        if (v.reply == nullptr)
+        if (v.forceOK == false && v.responseBinary == nullptr && v.redisReply == nullptr && v.ssdbReply == nullptr)
         {
             ret = false;
             break;

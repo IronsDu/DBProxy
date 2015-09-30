@@ -52,6 +52,8 @@ private:
     bool            procSSDBSingleCommand(SSDBProtocolResponse*, std::string* requestStr);
 
     bool            processRedisSingleCommand(parse_tree* parse, std::string* requestStr);
+    bool            processRedisMset(parse_tree* parse, std::string* requestStr);
+    bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::string* requestStr, const char* command);
 
 private:
     std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;
