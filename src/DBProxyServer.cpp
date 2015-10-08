@@ -102,6 +102,7 @@ int main()
         mainLoop.loop(1);
         /*  处理网络线程投递过来的消息 */
         procNet2LogicMsgList();
+        server->getService()->flushCachePackectList();
     }
 
     std::cin.get();

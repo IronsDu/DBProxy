@@ -22,7 +22,7 @@ private:
 
 private:
     parse_tree*     mRedisParse;
-    std::string     mCache;
+    std::string*    mCache;
 };
 
 class ClientLogicSession;

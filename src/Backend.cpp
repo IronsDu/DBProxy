@@ -13,6 +13,7 @@ BackendExtNetSession::BackendExtNetSession(BaseLogicSession::PTR logicSession) :
 {
     cout << "建立到服务器的链接" << endl;
     mRedisParse = nullptr;
+    mCache = nullptr;
 }
 
 BackendExtNetSession::~BackendExtNetSession()
@@ -22,6 +23,11 @@ BackendExtNetSession::~BackendExtNetSession()
     {
         parse_tree_del(mRedisParse);
         mRedisParse = nullptr;
+    }
+    if (mCache != nullptr)
+    {
+        delete mCache;
+        mCache = nullptr;
     }
 }
 
@@ -51,23 +57,35 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
 
             if (parseRet == REDIS_OK)
             {
-                if (mCache.empty())
+                if (mCache == nullptr)
                 {
-                    pushDataMsgToLogicThread(parseStartPos, parseEndPos - parseStartPos);
+                    BackendParseMsg tmp;
+                    tmp.responseBinary = new string(parseStartPos, parseEndPos - parseStartPos);
+                    tmp.redisReply = mRedisParse;
+                    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
                 }
                 else
                 {
-                    mCache.append(parseStartPos, parseEndPos - parseStartPos);
-                    pushDataMsgToLogicThread(mCache.c_str(), mCache.size());
-                    mCache.clear();
+                    mCache->append(parseStartPos, parseEndPos - parseStartPos);
+
+                    BackendParseMsg tmp;
+                    tmp.responseBinary = mCache;
+                    tmp.redisReply = mRedisParse;
+                    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
+
+                    mCache = nullptr;
                 }
+
                 parseStartPos = parseEndPos;
-                parse_tree_del(mRedisParse);
                 mRedisParse = nullptr;
             }
             else if (parseRet == REDIS_RETRY)
             {
-                mCache.append(parseStartPos, parseEndPos - parseStartPos);
+                if (mCache == nullptr)
+                {
+                    mCache = new std::string;
+                }
+                mCache->append(parseStartPos, parseEndPos - parseStartPos);
                 break;
             }
             else
@@ -84,7 +102,9 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
         int packetLen = 0;
         while ((packetLen = SSDBProtocolResponse::check_ssdb_packet(parseStartPos, leftLen)) > 0)
         {
-            pushDataMsgToLogicThread(parseStartPos, packetLen);
+            BackendParseMsg tmp;
+            tmp.responseBinary = new string(parseStartPos, packetLen);
+            pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
 
             totalLen += packetLen;
             leftLen -= packetLen;
@@ -155,7 +175,19 @@ void BackendLogicSession::onMsg(const char* buffer, int len)
         auto reply = replyPtr.lock();
         if (reply != nullptr)
         {
-            reply->onBackendReply(getSocketID(), buffer, len);
+            BackendParseMsg* netParseMsg = (BackendParseMsg*)buffer;
+            reply->onBackendReply(getSocketID(), *netParseMsg);
+            if (netParseMsg->responseBinary != nullptr)
+            {
+                delete netParseMsg->responseBinary;
+                netParseMsg->responseBinary = nullptr;
+            }
+            if (netParseMsg->redisReply != nullptr)
+            {
+                parse_tree_del(netParseMsg->redisReply);
+                netParseMsg->redisReply = nullptr;
+            }
+
             client = reply->getClient();
         }
         mPendingWaitReply.pop();

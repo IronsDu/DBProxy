@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "WrapTCPService.h"
 
+#define USE_DELAY_SEND
+
 class BaseLogicSession
 {
 public:
@@ -40,6 +42,23 @@ public:
     int64_t         getSocketID() const
     {
         return mSocketID;
+    }
+
+    void            cacheSend(const char* buffer, int len)
+    {
+#ifdef USE_DELAY_SEND
+        mServer->getService()->cacheSend(mSocketID, DataSocket::makePacket(buffer, len));
+#else
+        mServer->getService()->send(mSocketID, DataSocket::makePacket(buffer, len));
+#endif
+    }
+    void            cacheSend(const DataSocket::PACKET_PTR& packet)
+    {
+#ifdef USE_DELAY_SEND
+        mServer->getService()->cacheSend(mSocketID, packet);
+#else
+        mServer->getService()->send(mSocketID, packet);
+#endif
     }
 private:
     WrapServer::PTR     mServer;

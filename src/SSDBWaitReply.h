@@ -15,7 +15,7 @@ public:
     void            pushStr(const std::string& str);
     void            pushStr(const char* str);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 
 private:
@@ -27,7 +27,7 @@ class SSDBSingleWaitReply : public BaseWaitReply
 public:
     SSDBSingleWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 
@@ -36,7 +36,7 @@ class SSDBMultiSetWaitReply : public BaseWaitReply
 public:
     SSDBMultiSetWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 
@@ -45,7 +45,7 @@ class SSDBMultiGetWaitReply : public BaseWaitReply
 public:
     SSDBMultiGetWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 

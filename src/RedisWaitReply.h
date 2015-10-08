@@ -8,7 +8,7 @@ class RedisSingleWaitReply : public BaseWaitReply
 public:
     RedisSingleWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 
@@ -17,7 +17,7 @@ class RedisStatusReply : public BaseWaitReply
 public:
     RedisStatusReply(ClientLogicSession* client, const char* status);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 
 private:
@@ -29,7 +29,7 @@ class RedisErrorReply : public BaseWaitReply
 public:
     RedisErrorReply(ClientLogicSession* client, const char* error);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 
 private:
@@ -41,7 +41,7 @@ class RedisWrongTypeReply : public BaseWaitReply
 public:
     RedisWrongTypeReply(ClientLogicSession* client, const char* wrongType, const char* detail);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 
 private:
@@ -54,7 +54,7 @@ class RedisMgetWaitReply : public BaseWaitReply
 public:
     RedisMgetWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 
@@ -63,7 +63,7 @@ class RedisMsetWaitReply : public BaseWaitReply
 public:
     RedisMsetWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 
@@ -72,7 +72,7 @@ class RedisDelWaitReply : public BaseWaitReply
 public:
     RedisDelWaitReply(ClientLogicSession* client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len);
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(ClientLogicSession*);
 };
 

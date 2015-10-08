@@ -10,6 +10,7 @@
 ClientExtNetSession::ClientExtNetSession(BaseLogicSession::PTR logicSession) : ExtNetSession(logicSession)
 {
     mRedisParse = nullptr;
+    mCache = nullptr;
 }
 
 ClientExtNetSession::~ClientExtNetSession()
@@ -18,6 +19,11 @@ ClientExtNetSession::~ClientExtNetSession()
     {
         parse_tree_del(mRedisParse);
         mRedisParse = nullptr;
+    }
+    if (mCache != nullptr)
+    {
+        delete mCache;
+        mCache = nullptr;
     }
 }
 
@@ -71,15 +77,15 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
                 ParseMsg tmp;
                 tmp.msg = mRedisParse;
 
-                if (mCache.empty())
+                if (mCache == nullptr)
                 {
                     tmp.buffer = new string(parseStartPos, parseEndPos - parseStartPos);
                 }
                 else
                 {
-                    mCache.append(parseStartPos, parseEndPos - parseStartPos);
-                    tmp.buffer = new string(std::move(mCache));
-                    mCache.clear();
+                    mCache->append(parseStartPos, parseEndPos - parseStartPos);
+                    tmp.buffer = mCache;
+                    mCache = nullptr;
                 }
                 parseStartPos = parseEndPos;
                 pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
@@ -87,7 +93,11 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
             }
             else if (parseRet == REDIS_RETRY)
             {
-                mCache.append(parseStartPos, parseEndPos - parseStartPos);
+                if (mCache == nullptr)
+                {
+                    mCache = new std::string;
+                }
+                mCache->append(parseStartPos, parseEndPos - parseStartPos);
                 break;
             }
             else
@@ -352,7 +362,7 @@ bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::st
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->send(requestStr->c_str(), requestStr->size());
+            server->cacheSend(requestStr->c_str(), requestStr->size());
         }
         else
         {
@@ -372,7 +382,7 @@ bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::st
 
                 w->addWaitServer(server->getSocketID());
                 server->pushPendingWaitReply(w);
-                server->send(request2Backend.getResult(), request2Backend.getResultLen());
+                server->cacheSend(request2Backend.getResult(), request2Backend.getResultLen());
             }
         }
 
@@ -421,7 +431,7 @@ bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitRepl
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->send(requestStr->c_str(), requestStr->size());
+            server->cacheSend(requestStr->c_str(), requestStr->size());
         }
         else
         {
@@ -441,7 +451,7 @@ bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitRepl
 
                 w->addWaitServer(server->getSocketID());
                 server->pushPendingWaitReply(w);
-                server->send(request2Backend.getResult(), request2Backend.getResultLen());
+                server->cacheSend(request2Backend.getResult(), request2Backend.getResultLen());
             }
         }
 
@@ -464,7 +474,7 @@ bool ClientLogicSession::procSSDBSingleCommand(SSDBProtocolResponse* request, st
         auto server = findBackendByID(serverID);
         w->addWaitServer(server->getSocketID());
         server->pushPendingWaitReply(w);
-        server->send(requestStr->c_str(), requestStr->size());
+        server->cacheSend(requestStr->c_str(), requestStr->size());
 
         mPendingReply.push_back(w);
     }
@@ -484,7 +494,7 @@ bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, std::strin
         auto server = findBackendByID(serverID);
         w->addWaitServer(server->getSocketID());
         server->pushPendingWaitReply(w);
-        server->send(requestStr->c_str(), requestStr->size());
+        server->cacheSend(requestStr->c_str(), requestStr->size());
 
         mPendingReply.push_back(w);
     }
@@ -539,7 +549,7 @@ bool ClientLogicSession::processRedisMset(parse_tree* parse, std::string* reques
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->send(requestStr->c_str(), requestStr->size());
+            server->cacheSend(requestStr->c_str(), requestStr->size());
         }
         else
         {
@@ -558,7 +568,7 @@ bool ClientLogicSession::processRedisMset(parse_tree* parse, std::string* reques
 
                 w->addWaitServer(server->getSocketID());
                 server->pushPendingWaitReply(w);
-                server->send(request2Backend.getResult(), request2Backend.getResultLen());
+                server->cacheSend(request2Backend.getResult(), request2Backend.getResultLen());
             }
         }
 
@@ -609,7 +619,7 @@ bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWait
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->send(requestStr->c_str(), requestStr->size());
+            server->cacheSend(requestStr->c_str(), requestStr->size());
         }
         else
         {
@@ -628,7 +638,7 @@ bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWait
 
                 w->addWaitServer(server->getSocketID());
                 server->pushPendingWaitReply(w);
-                server->send(request2Backend.getResult(), request2Backend.getResultLen());
+                server->cacheSend(request2Backend.getResult(), request2Backend.getResultLen());
             }
         }
 

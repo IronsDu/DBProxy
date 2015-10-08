@@ -15,14 +15,14 @@ static void syncSSDBStrList(ClientLogicSession* client, const std::vector<std::s
     strsResponse.writev(strList);
     strsResponse.endl();
 
-    client->send(strsResponse.getResult(), strsResponse.getResultLen());
+    client->cacheSend(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
 StrListSSDBReply::StrListSSDBReply(ClientLogicSession* client) : BaseWaitReply(client)
 {
 }
 
-void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, const char* buffer, int len)
+void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
 {
 
 }
@@ -30,7 +30,7 @@ void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, const char* buff
 void StrListSSDBReply::mergeAndSend(ClientLogicSession* client)
 {
     mStrListResponse.endl();
-    client->send(mStrListResponse.getResult(), mStrListResponse.getResultLen());
+    client->cacheSend(mStrListResponse.getResult(), mStrListResponse.getResultLen());
 }
 
 void StrListSSDBReply::pushStr(std::string&& str)
@@ -53,13 +53,14 @@ SSDBSingleWaitReply::SSDBSingleWaitReply(ClientLogicSession* client) : BaseWaitR
 }
 
 /*  TODO::如果这个回复就是第一个pending reply，那么可以不用缓存而直接发送给客户端(减少内存拷贝)  */
-void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const char* buffer, int len)
+void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
 {
     for (auto& v : mWaitResponses)
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = new std::string(buffer, len);
+            v.responseBinary = msg.responseBinary;
+            msg.responseBinary = nullptr;
             break;
         }
     }
@@ -73,7 +74,7 @@ void SSDBSingleWaitReply::mergeAndSend(ClientLogicSession* client)
     }
     else
     {
-        client->send(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+        client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
     }
 }
 
@@ -81,13 +82,14 @@ SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(ClientLogicSession* client) : BaseW
 {
 }
 
-void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, const char* buffer, int len)
+void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
 {
     for (auto& v : mWaitResponses)
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = new std::string(buffer, len);
+            v.responseBinary = msg.responseBinary;
+            msg.responseBinary = nullptr;
 
             if (mWaitResponses.size() != 1)
             {
@@ -110,7 +112,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->send(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+            client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
         }
         else
         {
@@ -133,7 +135,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
 
             if (errorReply != nullptr)
             {
-                client->send(errorReply->c_str(), errorReply->size());
+                client->cacheSend(errorReply->c_str(), errorReply->size());
             }
             else
             {
@@ -142,7 +144,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
 
                 response.writev(SSDB_OK, num);
                 response.endl();
-                client->send(response.getResult(), response.getResultLen());
+                client->cacheSend(response.getResult(), response.getResultLen());
             }
         }
     }
@@ -152,13 +154,14 @@ SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(ClientLogicSession* client) : BaseW
 {
 }
 
-void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, const char* buffer, int len)
+void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
 {
     for (auto& v : mWaitResponses)
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = new std::string(buffer, len);
+            v.responseBinary = msg.responseBinary;
+            msg.responseBinary = nullptr;
 
             if (mWaitResponses.size() != 1)
             {
@@ -181,7 +184,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->send(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+            client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
         }
         else
         {
@@ -201,7 +204,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
 
             if (errorReply != nullptr)
             {
-                client->send(errorReply->c_str(), errorReply->size());
+                client->cacheSend(errorReply->c_str(), errorReply->size());
             }
             else
             {
@@ -215,7 +218,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
                 }
                 
                 strsResponse.endl();
-                client->send(strsResponse.getResult(), strsResponse.getResultLen());
+                client->cacheSend(strsResponse.getResult(), strsResponse.getResultLen());
             }
         }
     }

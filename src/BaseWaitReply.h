@@ -9,6 +9,18 @@ class ClientLogicSession;
 class SSDBProtocolResponse;
 struct parse_tree;
 
+struct BackendParseMsg
+{
+    BackendParseMsg()
+    {
+        redisReply = nullptr;
+        responseBinary = nullptr;
+    }
+
+    parse_tree* redisReply;
+    std::string* responseBinary;
+};
+
 class BaseWaitReply
 {
 public:
@@ -21,7 +33,7 @@ public:
     virtual ~BaseWaitReply();
 public:
     /*  收到db服务器的返回值 */
-    virtual void    onBackendReply(int64_t dbServerSocketID, const char* buffer, int len) = 0;
+    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&) = 0;
     /*  当所有db服务器都返回数据后，调用此函数尝试合并返回值并发送给客户端  */
     virtual void    mergeAndSend(ClientLogicSession*) = 0;
 

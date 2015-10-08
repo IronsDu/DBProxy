@@ -23,7 +23,7 @@ private:
 
 private:
     parse_tree*     mRedisParse;
-    std::string     mCache;
+    std::string*    mCache;
 };
 
 /*  代理服务器的客户端(逻辑线程)逻辑层会话    */
