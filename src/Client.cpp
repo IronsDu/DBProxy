@@ -58,10 +58,10 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
             if (mRedisParse == nullptr)
             {
                 /*TODO::处理非完成的服务器操作相关命令--非数据操作相关的命令协议*/
-                if (strncmp(buffer, "PING\r\n", 6) == 0)
+                if (strncmp(parseStartPos, "PING\r\n", 6) == 0)
                 {
                     ParseMsg tmp;
-                    tmp.buffer = new string(buffer, 6);
+                    tmp.buffer = new string(parseStartPos, 6);
                     pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
                     totalLen += 6;
                     parseStartPos += 6;

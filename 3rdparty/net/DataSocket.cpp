@@ -445,7 +445,7 @@ SEND_PROC:
 
         ++it;
         num++;
-        if (num <= MAX_IOVEC)
+        if (num >=  MAX_IOVEC)
         {
             break;
         }

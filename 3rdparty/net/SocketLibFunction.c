@@ -26,6 +26,8 @@ ox_socket_init(void)
             ret = false;
         }
     }
+    #else
+    signal(SIGPIPE, SIG_IGN);
     #endif
 
     return ret;

@@ -19,4 +19,4 @@ source = src/Backend.cpp\
 		3rdparty/utils/timer.cpp\
 
 server:
-	g++ $(source) -I./3rdparty/ssdb -I./3rdparty/net -I./3rdparty/spdlog/include -I./3rdparty/utils -g -std=c++11 -lpthread -o dbserver
+	g++ $(source) -I./3rdparty/ssdb -I./3rdparty/net -I./3rdparty/spdlog/include -I./3rdparty/utils -O3 -std=c++11 -lpthread -o dbserver

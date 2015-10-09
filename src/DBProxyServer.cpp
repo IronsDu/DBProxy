@@ -21,7 +21,7 @@ bool sharding_key(const char* str, int len, int& serverID)
 int main()
 {
     int listenPort;         /*代理服务器的监听端口*/
-    
+    ox_socket_init(); 
     std::vector<std::tuple<int, string, int>> backendConfigs;
     {
         listenPort = 9999;
