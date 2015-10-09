@@ -1,5 +1,6 @@
 #include <iostream>
 #include <assert.h>
+#include <string.h>
 
 #include "SocketLibFunction.h"
 #include "EventLoop.h"

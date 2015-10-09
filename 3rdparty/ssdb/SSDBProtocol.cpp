@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <string.h>
+
 #include "SocketLibFunction.h"
 #include "buffer.h"
 #include "platform.h"

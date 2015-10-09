@@ -337,7 +337,7 @@ namespace lua_tinker
         static int invoke(lua_State *L)
         {
             auto f = upvalue_<RVal(*)(Args...)>(L);
-            Eval<sizeof...(Args), RVal, Args...>::eval<Args...>(f, L);
+            Eval<sizeof...(Args), RVal, Args...>::eval<(Args)...>(f, L);
             return 1;
         }
     };

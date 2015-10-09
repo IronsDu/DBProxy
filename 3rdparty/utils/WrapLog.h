@@ -5,6 +5,7 @@
 #include <iostream>
 #include <memory>
 
+#include "platform.h"
 #include "spdlog/spdlog.h"
 
 class WrapLog
@@ -30,10 +31,12 @@ public:
     WrapLog()
     {
         mLogggers = spdlog::stdout_logger_mt("A");
+#ifdef PLATFORM_WINDOWS
         _handle = GetStdHandle(STD_OUTPUT_HANDLE);
         mCurrentColor = CONSOLE_INTENSE;
 
         setColor(CONSOLE_GREEN);
+#endif
         mLevel = spdlog::level::info;
     }
 
@@ -154,6 +157,7 @@ private:
 private:
     void                            setColor(ConsoleAttribute ca)
     {
+#ifdef PLATFORM_WINDOWS
         if (ca != mCurrentColor)
         {
             WORD word(colorToWORD(ca));
@@ -161,7 +165,9 @@ private:
 
             mCurrentColor = ca;
         }
+#endif
     }
+#ifdef PLATFORM_WINDOWS
     WORD                            colorToWORD(ConsoleAttribute ca)
     {
         CONSOLE_SCREEN_BUFFER_INFO screen_infos;
@@ -204,7 +210,7 @@ private:
 
         return word;
     }
-
+#endif
     bool    shouldLog(spdlog::level::level_enum num) const
     {
         return num >= mLevel;
@@ -212,9 +218,11 @@ private:
 
 private:
     std::shared_ptr<spdlog::logger> mLogggers;
+#ifdef PLATFORM_WINDOWS
     HANDLE                          _handle;
-    spdlog::level::level_enum       mLevel;
     ConsoleAttribute                mCurrentColor;
+#endif
+    spdlog::level::level_enum       mLevel;
 };
 
 #endif
