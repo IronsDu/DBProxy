@@ -245,12 +245,16 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
         }
         else
         {
-            const char* op = msg->msg->childs[0]->reply->str;
-            const size_t oplen = msg->msg->childs[0]->reply->len;
+            const char* op = msg->msg->reply->element[0]->str;
+            const size_t oplen = msg->msg->reply->element[0]->len;
 
             bool isSuccess = false;
 
-            if (strncmp(op, "mget", oplen) == 0)
+            if (strncmp(op, "PING", 4) == 0)
+            {
+                pushRedisStatusReply("PONG");
+            }
+            else if (strncmp(op, "mget", oplen) == 0)
             {
                 isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(this), msg->msg, msg->buffer, "mget");
             }
@@ -487,7 +491,7 @@ bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, std::strin
     bool isSuccess = false;
 
     int serverID;
-    if (sharding_key(parse->childs[1]->reply->str, parse->childs[1]->reply->len, serverID))
+    if (sharding_key(parse->reply->element[1]->str, parse->reply->element[1]->len, serverID))
     {
         isSuccess = true;
         BaseWaitReply::PTR w = std::make_shared<RedisSingleWaitReply>(this);
@@ -512,10 +516,10 @@ bool ClientLogicSession::processRedisMset(parse_tree* parse, std::string* reques
     {
         int serverID;
 
-        const char* key = parse->childs[i]->reply->str;
-        int keyLen = parse->childs[i]->reply->len;
-        const char* value = parse->childs[i+1]->reply->str;
-        int valueLen = parse->childs[i + 1]->reply->len;
+        const char* key = parse->reply->element[i]->str;
+        int keyLen = parse->reply->element[i]->len;
+        const char* value = parse->reply->element[i+1]->str;
+        int valueLen = parse->reply->element[i+1]->len;
 
         if (sharding_key(key, keyLen, serverID))
         {
@@ -587,8 +591,8 @@ bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWait
     for (size_t i = 1; i < parse->reply->elements; ++i)
     {
         int serverID;
-        const char* key = parse->childs[i]->reply->str;
-        int keyLen = parse->childs[i]->reply->len;
+        const char* key = parse->reply->element[i]->str;
+        int keyLen = parse->reply->element[i]->len;
 
         if (sharding_key(key, keyLen, serverID))
         {
