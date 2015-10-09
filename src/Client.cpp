@@ -50,15 +50,6 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
     if (mRedisParse != nullptr ||
         !IS_NUM(h))
     {
-        /*TODO::处理非完成的服务器操作相关命令--非数据操作相关的命令协议*/
-        if (strncmp(buffer, "PING\r\n", 6) ==0)
-        {
-            ParseMsg tmp;
-            tmp.buffer = new string(buffer, 6);
-            pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
-            return 6;
-        }
-
         /*  redis request   */
         char* parseEndPos = (char*)buffer;
         char* parseStartPos = parseEndPos;
@@ -66,7 +57,21 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
         {
             if (mRedisParse == nullptr)
             {
-                mRedisParse = parse_tree_new();
+                /*TODO::处理非完成的服务器操作相关命令--非数据操作相关的命令协议*/
+                if (strncmp(buffer, "PING\r\n", 6) == 0)
+                {
+                    ParseMsg tmp;
+                    tmp.buffer = new string(buffer, 6);
+                    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
+                    totalLen += 6;
+                    parseStartPos += 6;
+
+                    continue;
+                }
+                else
+                {
+                    mRedisParse = parse_tree_new();
+                }
             }
 
             int parseRet = parse(mRedisParse, &parseEndPos, (char*)buffer+len);
@@ -89,7 +94,7 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
                 }
                 parseStartPos = parseEndPos;
                 pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
-                mRedisParse = parse_tree_new();
+                mRedisParse = nullptr;
             }
             else if (parseRet == REDIS_RETRY)
             {
