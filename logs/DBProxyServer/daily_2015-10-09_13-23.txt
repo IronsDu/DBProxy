@@ -1,3 +1,0 @@
-[2015-10-09 13:23:51.199] [] [info] connec db server id:0, address: 127.0.0.1:6379
-[2015-10-09 13:23:51.200] [] [info] listen proxy port:9999
-[2015-10-09 13:23:51.200] [] [warning] db proxy server start!
