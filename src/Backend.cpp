@@ -11,14 +11,14 @@ std::vector<BackendLogicSession*>    gBackendClients;
 
 BackendExtNetSession::BackendExtNetSession(BaseLogicSession::PTR logicSession) : ExtNetSession(logicSession)
 {
-    cout << "建立到服务器的链接" << endl;
+    cout << "建立到服务器的网络链接" << endl;
     mRedisParse = nullptr;
     mCache = nullptr;
 }
 
 BackendExtNetSession::~BackendExtNetSession()
 {
-    cout << "断开与服务器的链接" << endl;
+    cout << "断开与服务器的网络链接" << endl;
     if (mRedisParse != nullptr)
     {
         parse_tree_del(mRedisParse);
@@ -34,7 +34,6 @@ BackendExtNetSession::~BackendExtNetSession()
 /*  收到db server的reply，解析并放入逻辑消息队列   */
 int BackendExtNetSession::onMsg(const char* buffer, int len)
 {
-    bool isExist = mRedisParse != nullptr;
     int totalLen = 0;
 
     const char c = buffer[0];
@@ -117,11 +116,13 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
 
 void BackendLogicSession::onEnter() 
 {
+    cout << "建立与数据服务器的逻辑链接" << endl;
     gBackendClients.push_back(this);
 }
 
 void BackendLogicSession::onClose()
 {
+    cout << "断开与数据服务器的逻辑链接" << endl;
     for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
     {
         if (*it == this)

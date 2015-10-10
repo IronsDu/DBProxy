@@ -9,12 +9,14 @@
 
 ClientExtNetSession::ClientExtNetSession(BaseLogicSession::PTR logicSession) : ExtNetSession(logicSession)
 {
+    cout << "收到客户端的网络连接" << endl;
     mRedisParse = nullptr;
     mCache = nullptr;
 }
 
 ClientExtNetSession::~ClientExtNetSession()
 {
+    cout << "断开和客户端的网络连接" << endl;
     if (mRedisParse != nullptr)
     {
         parse_tree_del(mRedisParse);
@@ -144,12 +146,12 @@ ClientLogicSession::ClientLogicSession()
 
 void ClientLogicSession::onEnter()
 {
-
+    cout << "建立与客户端的逻辑链接" << endl;
 }
 
 void ClientLogicSession::onClose()
 {
-
+    cout << "断开与客户端的逻辑链接" << endl;
 }
 
 extern bool sharding_key(const char* str, int len, int& serverID);

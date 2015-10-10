@@ -32,7 +32,7 @@ public:
 
     void                setData(const char* data, size_t len)
     {
-        mPacket = std::string(data, len);
+        mPacket.append(data, len);
     }
 
     BaseLogicSession::PTR   mSession;
