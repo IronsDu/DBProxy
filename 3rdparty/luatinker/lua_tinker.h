@@ -437,11 +437,10 @@ namespace lua_tinker
         lua_pushcclosure(L, mem_functor<RVal, T, P, Args...>::invoke, 1);
     }
 
-    template<typename T>
+    template<typename T, typename ...Args>
     struct ConstructorEval
     {
-        template<typename ...NowArgs>
-        static  void    eval(void* memory, lua_State *L, NowArgs&&... args)
+        static  void    eval(void* memory, lua_State *L, Args&&... args)
         {
             RecursionRead(L, 1, args...);
             new(memory)val2user<T>(args...);
@@ -453,7 +452,7 @@ namespace lua_tinker
     int constructor(lua_State *L)
     {
         void* m = lua_newuserdata(L, sizeof(val2user<T>));
-        ConstructorEval<T>::eval<Args...>(m, L, Args()...);
+        ConstructorEval<T, Args...>::eval(m, L, Args()...);
         push_meta(L, class_name<typename class_type<T>::type>::name());
         lua_setmetatable(L, -2);
 
