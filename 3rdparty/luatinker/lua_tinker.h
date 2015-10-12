@@ -314,8 +314,7 @@ namespace lua_tinker
     template<typename RVal, typename ...Args>
     struct HelpEval
     {
-        template<typename ...NowArgs>
-        static  void    eval(RVal(*f)(Args...), lua_State *L, NowArgs&&... args)
+        static  void    eval(RVal(*f)(Args...), lua_State *L, Args&&... args)
         {
             RecursionRead(L, 1, args...);
             RVal ret = (f)(args...);
@@ -326,8 +325,7 @@ namespace lua_tinker
     template<typename ...Args>
     struct HelpEval < void, Args... >
     {
-        template<typename ...NowArgs>
-        static  void    eval(void(*f)(Args...), lua_State *L, NowArgs&&... args)
+        static  void    eval(void(*f)(Args...), lua_State *L, Args&&... args)
         {
             RecursionRead(L, 1, args...);
             (f)(args...);
@@ -341,7 +339,7 @@ namespace lua_tinker
         static int invoke(lua_State *L)
         {
             auto f = upvalue_<RVal(*)(Args...)>(L);
-            HelpEval<RVal, Args...>::eval<Args...>(f, L, Args()...);
+            HelpEval<RVal, Args...>::eval(f, L, Args()...);
             return 1;
         }
     };
@@ -352,7 +350,7 @@ namespace lua_tinker
         static int invoke(lua_State *L)
         {
             auto f = upvalue_<void(*)(Args...)>(L);
-            HelpEval<void, Args...>::eval<Args...>(f, L, Args()...);
+            HelpEval<void, Args...>::eval(f, L, Args()...);
             return 0;
         }
     };
@@ -383,8 +381,7 @@ namespace lua_tinker
     template<typename RVal, typename P, typename ...Args>
     struct HelpMemEval
     {
-        template<typename ...NowArgs>
-        static  void    eval(P* p, RVal(P::*f)(Args...), lua_State *L, NowArgs&&... args)
+        static  void    eval(P* p, RVal(P::*f)(Args...), lua_State *L, Args&&... args)
         {
             RecursionRead(L, 1, args...);
             RVal ret = (p->*f)(args...);
@@ -395,8 +392,7 @@ namespace lua_tinker
     template<typename P, typename ...Args>
     struct HelpMemEval < void, P, Args... >
     {
-        template<typename ...NowArgs>
-        static  void    eval(P* p, void(P::*f)(Args...), lua_State *L, NowArgs&&... args)
+        static  void    eval(P* p, void(P::*f)(Args...), lua_State *L, Args&&... args)
         {
             RecursionRead(L, 1, args...);
             (p->*f)(args...);
@@ -411,7 +407,7 @@ namespace lua_tinker
         {
             P* p = ((P*)read<T*>(L, 1));
             auto f = upvalue_<RVal(P::*)(Args...)>(L);
-            HelpMemEval<RVal, P, Args...>::eval<Args...>(p, f, L, Args()...);
+            HelpMemEval<RVal, P, Args...>::eval(p, f, L, Args()...);
             return 1;
         }
     };
@@ -423,7 +419,7 @@ namespace lua_tinker
         {
             P* p = ((P*)read<T*>(L, 1));
             auto f = upvalue_<void(P::*)(Args...)>(L);
-            HelpMemEval<void, P, Args...>::eval<Args...>(p, f, L, Args()...);
+            HelpMemEval<void, P, Args...>::eval(p, f, L, Args()...);
             return 0;
         }
     };
