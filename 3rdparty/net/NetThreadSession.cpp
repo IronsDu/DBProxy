@@ -7,11 +7,6 @@ void ExtNetSession::pushDataMsgToLogicThread(const char* data, int len)
     pushDataMsg2LogicMsgList(mLogicSession, data, len);
 }
 
-int ExtNetSession::onMsg(const char* buffer, int len)
-{
-    return len;
-}
-
 void ExtNetSession::onEnter()
 {
     mLogicSession->setSession(getServer(), getID(), getIP());

@@ -36,9 +36,9 @@ public:
     /*处理收到的数据*/
     virtual int     onMsg(const char* buffer, int len) = 0;
     /*链接建立*/
-    virtual void    onEnter(){};
+    virtual void    onEnter() = 0;
     /*链接断开*/
-    virtual void    onClose(){};
+    virtual void    onClose() = 0;
 
     const std::string&  getIP() const
     {

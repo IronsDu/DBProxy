@@ -15,13 +15,24 @@
 #include "Backend.h"
 #include "Client.h"
 
+extern "C"
+{
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+#include "luaconf.h"
+};
+#include "lua_tinker.h"
+#include "lua_readtable.h"
+
 using namespace std;
 
 string sharding_function;
+struct lua_State* L = nullptr;
 
 bool sharding_key(const char* str, int len, int& serverID)
 {
-    serverID = 0;//lua_tinker::call<int>(L, sharding_function.c_str(), string(str, len));   /*使用string是怕str没有结束符*/
+    serverID = lua_tinker::call<int>(L, sharding_function.c_str(), string(str, len));   /*使用string是怕str没有结束符*/
     return true;
 }
 
@@ -71,9 +82,28 @@ int main()
         ox_socket_init();
         std::vector<std::tuple<int, string, int>> backendConfigs;
         {
-            listenPort = 9999;
+            struct msvalue_s config(true);
+            L = luaL_newstate();
+            luaopen_base(L);
+            luaL_openlibs(L);
+            /*TODO::由启动参数指定配置路径*/
+            lua_tinker::dofile(L, "ServerConfig//SSDBProxyConfig.lua");
+            aux_readluatable_byname(L, "SSDBProxyConfig", &config);
 
-            backendConfigs.push_back(std::make_tuple(0, "127.0.0.1", 6379));
+            map<string, msvalue_s*>& allconfig = *config._map;
+            listenPort = atoi(allconfig["listenPort"]->_str.c_str());
+            sharding_function = allconfig["sharding_function"]->_str;
+
+            map<string, msvalue_s*>& backends = *allconfig["backends"]->_map;
+
+            for (auto& v : backends)
+            {
+                map<string, msvalue_s*>& oneBackend = *(v.second)->_map;
+                int id = atoi(oneBackend["id"]->_str.c_str());
+                string dbServerIP = oneBackend["ip"]->_str;
+                int port = atoi(oneBackend["port"]->_str.c_str());
+                backendConfigs.push_back(std::make_tuple(id, dbServerIP, port));
+            }
         }
 
         //WrapLog::PTR gDailyLogger = std::make_shared<WrapLog>();
@@ -130,6 +160,8 @@ int main()
         server->getService()->closeService();
         syncNet2LogicMsgList(mainLoop);
         procNet2LogicMsgList();
+        lua_close(L);
+        L = nullptr;
     }
 
     return 0;

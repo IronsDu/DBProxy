@@ -51,11 +51,10 @@ public:
 protected:
     void            pushDataMsgToLogicThread(const char* data, int len);
 private:
-    virtual int     onMsg(const char* buffer, int len) override;
-    virtual void    onEnter() override;
-    virtual void    onClose() override;
+    virtual void    onEnter() final;
+    virtual void    onClose() final;
 
-private:
+protected:
     BaseLogicSession::PTR   mLogicSession;
 };
 
