@@ -8,7 +8,7 @@
 PLAT= none
 
 CC= gcc
-CFLAGS= -O2 -Wall $(MYCFLAGS)
+CFLAGS= -O2 -Wall -fPIC $(MYCFLAGS)
 AR= ar rcu
 RANLIB= ranlib
 RM= rm -f
@@ -23,6 +23,7 @@ MYLIBS=
 PLATS= aix ansi bsd freebsd generic linux macosx mingw posix solaris
 
 LUA_A=	liblua.a
+LUA_SO=	liblua.so
 CORE_O=	lapi.o lcode.o ldebug.o ldo.o ldump.o lfunc.o lgc.o llex.o lmem.o \
 	lobject.o lopcodes.o lparser.o lstate.o lstring.o ltable.o ltm.o  \
 	lundump.o lvm.o lzio.o
@@ -36,7 +37,7 @@ LUAC_T=	luac
 LUAC_O=	luac.o print.o
 
 ALL_O= $(CORE_O) $(LIB_O) $(LUA_O) $(LUAC_O)
-ALL_T= $(LUA_A) $(LUA_T) $(LUAC_T)
+ALL_T= $(LUA_A) $(LUA_T) $(LUAC_T) $(LUA_SO)
 ALL_A= $(LUA_A)
 
 default: $(PLAT)
@@ -47,6 +48,8 @@ o:	$(ALL_O)
 
 a:	$(ALL_A)
 
+$(LUA_SO):	$(CORE_O) $(LIB_O)
+	$(CC) -o $@ -shared $?
 $(LUA_A): $(CORE_O) $(LIB_O)
 	$(AR) $@ $?
 	$(RANLIB) $@

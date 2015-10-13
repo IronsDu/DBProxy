@@ -87,8 +87,8 @@ int main()
             luaopen_base(L);
             luaL_openlibs(L);
             /*TODO::由启动参数指定配置路径*/
-            lua_tinker::dofile(L, "ServerConfig//SSDBProxyConfig.lua");
-            aux_readluatable_byname(L, "SSDBProxyConfig", &config);
+            lua_tinker::dofile(L, "Config.lua");
+            aux_readluatable_byname(L, "ProxyConfig", &config);
 
             map<string, msvalue_s*>& allconfig = *config._map;
             listenPort = atoi(allconfig["listenPort"]->_str.c_str());

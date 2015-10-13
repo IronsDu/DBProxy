@@ -17,6 +17,8 @@ source = src/Backend.cpp\
 		3rdparty/utils/ox_file.cpp\
 		3rdparty/utils/systemlib.c\
 		3rdparty/utils/timer.cpp\
+		3rdparty/luatinker/lua_tinker.cpp\
+		3rdparty/utils/lua_readtable.cpp\
 
 server:
-	g++ $(source) -I./3rdparty/ssdb -I./3rdparty/net -I./3rdparty/spdlog/include -I./3rdparty/utils -O3 -std=c++11 -lpthread -o dbserver
+	g++ $(source) -I./3rdparty/luasrc/src -I./3rdparty/luatinker/ -I./3rdparty/ssdb -I./3rdparty/net -I./3rdparty/spdlog/include -I./3rdparty/utils -O3 -std=c++11 -L./3rdparty/luasrc/src -llua -lpthread -o dbserver
