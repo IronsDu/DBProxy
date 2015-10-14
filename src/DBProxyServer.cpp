@@ -157,6 +157,8 @@ int main()
             procNet2LogicMsgList();
             server->getService()->flushCachePackectList();
         }
+
+        server->getListenThread().closeListenThread();
         server->getService()->closeService();
         syncNet2LogicMsgList(mainLoop);
         procNet2LogicMsgList();

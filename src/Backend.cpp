@@ -11,14 +11,14 @@ std::vector<BackendLogicSession*>    gBackendClients;
 
 BackendExtNetSession::BackendExtNetSession(BaseLogicSession::PTR logicSession) : ExtNetSession(logicSession)
 {
-    cout << "建立到服务器的网络链接" << endl;
+    cout << "BackendExtNetSession::BackendExtNetSession" << endl;
     mRedisParse = nullptr;
     mCache = nullptr;
 }
 
 BackendExtNetSession::~BackendExtNetSession()
 {
-    cout << "断开与服务器的网络链接" << endl;
+    cout << "BackendExtNetSession::~BackendExtNetSession" << endl;
     if (mRedisParse != nullptr)
     {
         parse_tree_del(mRedisParse);
@@ -116,13 +116,11 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
 
 void BackendLogicSession::onEnter() 
 {
-    cout << "建立与数据服务器的逻辑链接" << endl;
     gBackendClients.push_back(this);
 }
 
 void BackendLogicSession::onClose()
 {
-    cout << "断开与数据服务器的逻辑链接" << endl;
     for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
     {
         if (*it == this)
@@ -151,6 +149,16 @@ void BackendLogicSession::onClose()
     }
 }
 
+BackendLogicSession::BackendLogicSession()
+{
+    cout << "BackendLogicSession::BackendLogicSession()" << endl;
+}
+
+BackendLogicSession::~BackendLogicSession()
+{
+    cout << "BackendLogicSession::~BackendLogicSession" << endl;
+}
+
 void BackendLogicSession::pushPendingWaitReply(std::weak_ptr<BaseWaitReply> w)
 {
     mPendingWaitReply.push(w);
@@ -169,6 +177,8 @@ int BackendLogicSession::getID() const
 /*  收到网络层发送过来的db reply  */
 void BackendLogicSession::onMsg(const char* buffer, int len)
 {
+    BackendParseMsg* netParseMsg = (BackendParseMsg*)buffer;
+
     if (!mPendingWaitReply.empty())
     {
         ClientLogicSession* client = nullptr;
@@ -176,19 +186,7 @@ void BackendLogicSession::onMsg(const char* buffer, int len)
         auto reply = replyPtr.lock();
         if (reply != nullptr)
         {
-            BackendParseMsg* netParseMsg = (BackendParseMsg*)buffer;
             reply->onBackendReply(getSocketID(), *netParseMsg);
-            if (netParseMsg->responseBinary != nullptr)
-            {
-                delete netParseMsg->responseBinary;
-                netParseMsg->responseBinary = nullptr;
-            }
-            if (netParseMsg->redisReply != nullptr)
-            {
-                parse_tree_del(netParseMsg->redisReply);
-                netParseMsg->redisReply = nullptr;
-            }
-
             client = reply->getClient();
         }
         mPendingWaitReply.pop();
@@ -196,6 +194,21 @@ void BackendLogicSession::onMsg(const char* buffer, int len)
         {
             client->processCompletedReply();
         }
+    }
+    else
+    {
+        assert(false);
+    }
+
+    if (netParseMsg->responseBinary != nullptr)
+    {
+        delete netParseMsg->responseBinary;
+        netParseMsg->responseBinary = nullptr;
+    }
+    if (netParseMsg->redisReply != nullptr)
+    {
+        parse_tree_del(netParseMsg->redisReply);
+        netParseMsg->redisReply = nullptr;
     }
 }
 

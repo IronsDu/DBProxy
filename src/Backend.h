@@ -31,6 +31,8 @@ class ClientLogicSession;
 class BackendLogicSession : public BaseLogicSession
 {
 public:
+    BackendLogicSession();
+    ~BackendLogicSession();
     void            pushPendingWaitReply(std::weak_ptr<BaseWaitReply>);
     void            setID(int id);
     int             getID() const;
