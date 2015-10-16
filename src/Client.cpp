@@ -11,7 +11,6 @@ ClientExtNetSession::ClientExtNetSession(std::shared_ptr<ClientLogicSession> log
 {
     cout << "ClientExtNetSession::ClientExtNetSession()" << endl;
     mRedisParse = nullptr;
-    mCache = nullptr;
 }
 
 ClientExtNetSession::~ClientExtNetSession()
@@ -22,25 +21,20 @@ ClientExtNetSession::~ClientExtNetSession()
         parse_tree_del(mRedisParse);
         mRedisParse = nullptr;
     }
-    if (mCache != nullptr)
-    {
-        delete mCache;
-        mCache = nullptr;
-    }
 }
 
 struct ParseMsg
 {
     ParseMsg()
     {
-        ssdbQuery = nullptr;
-        msg = nullptr;
-        buffer = nullptr;
+        ssdbRequest = nullptr;
+        redisRequest = nullptr;
+        requestBinary = nullptr;
     }
 
-    SSDBProtocolResponse* ssdbQuery;
-    parse_tree* msg;
-    string* buffer;
+    SSDBProtocolResponse* ssdbRequest;
+    parse_tree* redisRequest;
+    std::shared_ptr<std::string>*   requestBinary;
 };
 
 /*  收到客户端的请求,并解析请求投入到逻辑消息队列    */
@@ -62,7 +56,7 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
                 /*TODO::处理非完成的服务器操作相关命令--非数据操作相关的命令协议*/
                 if (strncmp(parseStartPos, "PING\r\n", 6) == 0)
                 {
-                    processRequest(true, nullptr, nullptr, parseStartPos, 6);
+                    processRequest(true, nullptr, nullptr, mCache, parseStartPos, 6);
 
                     totalLen += 6;
                     parseStartPos += 6;
@@ -82,14 +76,13 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
             {
                 if (mCache == nullptr)
                 {
-                    processRequest(true, nullptr, mRedisParse, parseStartPos, parseEndPos - parseStartPos);
+                    processRequest(true, nullptr, mRedisParse, mCache, parseStartPos, parseEndPos - parseStartPos);
                 }
                 else
                 {
                     mCache->append(parseStartPos, parseEndPos - parseStartPos);
-                    processRequest(true, nullptr, mRedisParse, mCache->c_str(), mCache->size());
-                    delete mCache;
-                    mCache = nullptr;   /*TODO::优化，重用内存，因为processRequest里调用网络库的send函数需要string ptr*/
+                    processRequest(true, nullptr, mRedisParse, mCache, mCache->c_str(), mCache->size());
+                    mCache = nullptr;
                 }
 
                 parseStartPos = parseEndPos;
@@ -99,7 +92,7 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
             {
                 if (mCache == nullptr)
                 {
-                    mCache = new std::string;
+                    mCache.reset(new std::string);
                 }
                 mCache->append(parseStartPos, parseEndPos - parseStartPos);
                 break;
@@ -122,9 +115,9 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
 #ifdef PROXY_SINGLE_THREAD
             SSDBProtocolResponse* ssdbQuery = new SSDBProtocolResponse;
             ssdbQuery->parse(parseStartPos);
-            processRequest(false, ssdbQuery, nullptr, parseStartPos, packetLen);
+            processRequest(false, ssdbQuery, nullptr, mCache, parseStartPos, packetLen);
 #else
-            processRequest(false, nullptr, nullptr, parseStartPos, packetLen);
+            processRequest(false, nullptr, nullptr, mCache, parseStartPos, packetLen);
 #endif
 
             totalLen += packetLen;
@@ -136,10 +129,10 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
     return totalLen;
 }
 
-void ClientExtNetSession::processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, const char* requestBuffer, size_t requestLen)
+void ClientExtNetSession::processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
 #ifdef PROXY_SINGLE_THREAD
-    mLogicSession->onRequest(isRedis, ssdbQuery, redisRequest, requestBuffer, requestLen);
+    mLogicSession->onRequest(isRedis, ssdbQuery, redisRequest, requestBinary, requestBuffer, requestLen);
     if (redisRequest != nullptr)
     {
         parse_tree_del(redisRequest);
@@ -152,13 +145,22 @@ void ClientExtNetSession::processRequest(bool isRedis, SSDBProtocolResponse* ssd
     }
 #else
     ParseMsg tmp;
-    tmp.buffer = new string(requestBuffer, requestLen);
+    tmp.requestBinary = new std::shared_ptr<std::string>;
+    if (requestBinary != nullptr)
+    {
+        *tmp.requestBinary = requestBinary;
+    }
+    else
+    {
+        tmp.requestBinary->reset(new std::string(requestBuffer, requestLen));
+    }
+
     if (!isRedis)
     {
-        tmp.ssdbQuery = new SSDBProtocolResponse;
-        tmp.ssdbQuery->parse(tmp.buffer->c_str());
+        tmp.ssdbRequest = new SSDBProtocolResponse;
+        tmp.ssdbRequest->parse(tmp.requestBinary->get()->c_str());
     }
-    tmp.msg = redisRequest;
+    tmp.redisRequest = redisRequest;
     pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
 #endif
 }
@@ -209,7 +211,7 @@ void ClientLogicSession::pushRedisStatusReply(const char* status)
     processCompletedReply();
 }
 
-void ClientLogicSession::onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, const char* requestBuffer, size_t requestLen)
+void ClientLogicSession::onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
     if (!isRedis)
     {
@@ -283,19 +285,19 @@ void ClientLogicSession::onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery
             }
             else if (strncmp(op, "mget", oplen) == 0)
             {
-                isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(this), redisRequest, requestBuffer, requestLen, "mget");
+                isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(this), redisRequest, requestBinary, requestBuffer, requestLen, "mget");
             }
             else if (strncmp(op, "mset", oplen) == 0)
             {
-                isSuccess = processRedisMset(redisRequest, requestBuffer, requestLen);
+                isSuccess = processRedisMset(redisRequest, requestBinary, requestBuffer, requestLen);
             }
             else if (strncmp(op, "del", oplen) == 0)
             {
-                isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(this), redisRequest, requestBuffer, requestLen, "del");
+                isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(this), redisRequest, requestBinary, requestBuffer, requestLen, "del");
             }
             else
             {
-                isSuccess = processRedisSingleCommand(redisRequest, requestBuffer, requestLen);
+                isSuccess = processRedisSingleCommand(redisRequest, requestBinary, requestBuffer, requestLen);
             }
 
             if (!isSuccess)
@@ -312,22 +314,23 @@ void ClientLogicSession::onMsg(const char* buffer, int len)
     assert(sizeof(ParseMsg) == len);
     ParseMsg* msg = (ParseMsg*)buffer;
 
-    onRequest(msg->ssdbQuery == nullptr, msg->ssdbQuery, msg->msg, msg->buffer != nullptr ? msg->buffer->c_str() : nullptr, msg->buffer != nullptr ? msg->buffer->size() : 0);
+    onRequest(msg->ssdbRequest == nullptr, msg->ssdbRequest, msg->redisRequest, *msg->requestBinary, 
+              msg->requestBinary->get()->c_str(), msg->requestBinary->get()->size());
 
-    if (msg->ssdbQuery != nullptr)
+    if (msg->ssdbRequest != nullptr)
     {
-        delete msg->ssdbQuery;
-        msg->ssdbQuery = nullptr;
+        delete msg->ssdbRequest;
+        msg->ssdbRequest = nullptr;
     }
-    if (msg->msg != nullptr)
+    if (msg->redisRequest != nullptr)
     {
-        parse_tree_del(msg->msg);
-        msg->msg = nullptr;
+        parse_tree_del(msg->redisRequest);
+        msg->redisRequest = nullptr;
     }
-    if (msg->buffer != nullptr)
+    if (msg->requestBinary != nullptr)
     {
-        delete msg->buffer;
-        msg->buffer = nullptr;
+        delete msg->requestBinary;
+        msg->requestBinary = nullptr;
     }
 }
 
@@ -525,7 +528,7 @@ bool ClientLogicSession::procSSDBSingleCommand(SSDBProtocolResponse* request, co
     return isSuccess;
 }
 
-bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, const char* requestBuffer, size_t requestLen)
+bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = false;
 
@@ -537,7 +540,14 @@ bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, const char
         auto server = findBackendByID(serverID);
         w->addWaitServer(server->getSocketID());
         server->pushPendingWaitReply(w);
-        server->cacheSend(requestBuffer, requestLen);
+        if (requestBinary != nullptr)
+        {
+            server->cacheSend(requestBinary);
+        }
+        else
+        {
+            server->cacheSend(requestBuffer, requestLen);
+        }
 
         mPendingReply.push_back(w);
     }
@@ -545,7 +555,7 @@ bool ClientLogicSession::processRedisSingleCommand(parse_tree* parse, const char
     return isSuccess;
 }
 
-bool ClientLogicSession::processRedisMset(parse_tree* parse, const char* requestBuffer, size_t requestLen)
+bool ClientLogicSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = parse->reply->elements > 1 && (parse->reply->elements-1) % 2 == 0;
 
@@ -592,7 +602,14 @@ bool ClientLogicSession::processRedisMset(parse_tree* parse, const char* request
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->cacheSend(requestBuffer, requestLen);
+            if (requestBinary != nullptr)
+            {
+                server->cacheSend(requestBinary);
+            }
+            else
+            {
+                server->cacheSend(requestBuffer, requestLen);
+            }
         }
         else
         {
@@ -621,7 +638,7 @@ bool ClientLogicSession::processRedisMset(parse_tree* parse, const char* request
     return isSuccess;
 }
 
-bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, const char* requestBuffer, size_t requestLen, const char* command)
+bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
 {
     bool isSuccess = parse->reply->elements > 1;
 
@@ -662,7 +679,14 @@ bool ClientLogicSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWait
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->cacheSend(requestBuffer, requestLen);
+            if (requestBinary != nullptr)
+            {
+                server->cacheSend(requestBinary);
+            }
+            else
+            {
+                server->cacheSend(requestBuffer, requestLen);
+            }
         }
         else
         {

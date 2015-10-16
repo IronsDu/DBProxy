@@ -73,7 +73,7 @@ void SSDBSingleWaitReply::mergeAndSend(ClientLogicSession* client)
     }
     else
     {
-        client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+        client->cacheSend(mWaitResponses.front().responseBinary);
     }
 }
 
@@ -110,11 +110,11 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+            client->cacheSend(mWaitResponses.front().responseBinary);
         }
         else
         {
-            string* errorReply = nullptr;
+            std::shared_ptr<std::string> errorReply = nullptr;
             int64_t num = 0;
 
             for (auto& v : mWaitResponses)
@@ -133,7 +133,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
 
             if (errorReply != nullptr)
             {
-                client->cacheSend(errorReply->c_str(), errorReply->size());
+                client->cacheSend(errorReply);
             }
             else
             {
@@ -181,11 +181,11 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+            client->cacheSend(mWaitResponses.front().responseBinary);
         }
         else
         {
-            string* errorReply = nullptr;
+            std::shared_ptr<std::string> errorReply = nullptr;
 
             static vector<Bytes> kvs;
             kvs.clear();
@@ -201,7 +201,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
 
             if (errorReply != nullptr)
             {
-                client->cacheSend(errorReply->c_str(), errorReply->size());
+                client->cacheSend(errorReply);
             }
             else
             {

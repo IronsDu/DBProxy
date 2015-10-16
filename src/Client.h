@@ -21,11 +21,11 @@ public:
 
 private:
     virtual int     onMsg(const char* buffer, int len) override;
-    void            processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, const char* requestBuffer, size_t requestLen);
+    void            processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
 
 private:
     parse_tree*     mRedisParse;
-    std::string*    mCache;
+    std::shared_ptr<std::string> mCache;
     std::shared_ptr<ClientLogicSession> mLogicSession;
 };
 
@@ -36,7 +36,7 @@ public:
     ClientLogicSession();
     /*  处理等待队列中已经完成的请求以及确认出错的请求 */
     void            processCompletedReply();
-    void            onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, const char* requestBuffer, size_t requestLen);
+    void            onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
 private:
     virtual void    onEnter() override;
     virtual void    onClose() override;
@@ -55,9 +55,9 @@ private:
     bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen, const char* command);
     bool            procSSDBSingleCommand(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
 
-    bool            processRedisSingleCommand(parse_tree* parse, const char* requestBuffer, size_t requestLen);
-    bool            processRedisMset(parse_tree* parse, const char* requestBuffer, size_t requestLen);
-    bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, const char* requestBuffer, size_t requestLen, const char* command);
+    bool            processRedisSingleCommand(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            processRedisMset(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
 
 private:
     std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;

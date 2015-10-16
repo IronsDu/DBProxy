@@ -10,11 +10,6 @@ BaseWaitReply::~BaseWaitReply()
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.responseBinary != nullptr)
-        {
-            delete v.responseBinary;
-            v.responseBinary = nullptr;
-        }
         if (v.ssdbReply != nullptr)
         {
             delete v.ssdbReply;
@@ -64,7 +59,7 @@ bool BaseWaitReply::isAllCompleted() const
 
     for (auto& v : mWaitResponses)
     {
-        if (v.forceOK == false && v.responseBinary == nullptr && v.redisReply == nullptr && v.ssdbReply == nullptr)
+        if (v.forceOK == false && v.redisReply == nullptr && v.ssdbReply == nullptr && v.responseBinary == nullptr)
         {
             ret = false;
             break;

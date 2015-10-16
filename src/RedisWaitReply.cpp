@@ -34,7 +34,7 @@ void RedisSingleWaitReply::mergeAndSend(ClientLogicSession* client)
     }
     else
     {
-        client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+        client->cacheSend(mWaitResponses.front().responseBinary);
     }
 }
 
@@ -121,7 +121,7 @@ void RedisMgetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+            client->cacheSend(mWaitResponses.front().responseBinary);
         }
         else
         {
@@ -229,7 +229,7 @@ void RedisDelWaitReply::mergeAndSend(ClientLogicSession* client)
         if (mWaitResponses.size() == 1)
         {
             /*TODO::诸如此类，直接将responseBinary作为socket的packet ptr，避免重复构造内存*/
-            client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
+            client->cacheSend(mWaitResponses.front().responseBinary);
         }
         else
         {

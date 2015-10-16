@@ -24,11 +24,6 @@ BackendExtNetSession::~BackendExtNetSession()
         parse_tree_del(mRedisParse);
         mRedisParse = nullptr;
     }
-    if (mCache != nullptr)
-    {
-        delete mCache;
-        mCache = nullptr;
-    }
 }
 
 /*  收到db server的reply，解析并放入逻辑消息队列   */
@@ -58,7 +53,7 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
             {
                 if (mCache == nullptr)
                 {
-                    processReply(mRedisParse, nullptr, parseStartPos, parseEndPos - parseStartPos);
+                    processReply(mRedisParse, mCache, parseStartPos, parseEndPos - parseStartPos);
                 }
                 else
                 {
@@ -74,7 +69,7 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
             {
                 if (mCache == nullptr)
                 {
-                    mCache = new std::string;
+                    mCache.reset(new std::string);
                 }
                 mCache->append(parseStartPos, parseEndPos - parseStartPos);
                 break;
@@ -93,7 +88,7 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
         int packetLen = 0;
         while ((packetLen = SSDBProtocolResponse::check_ssdb_packet(parseStartPos, leftLen)) > 0)
         {
-            processReply(mRedisParse, nullptr, parseStartPos, packetLen);
+            processReply(mRedisParse, mCache, parseStartPos, packetLen);
 
             totalLen += packetLen;
             leftLen -= packetLen;
@@ -104,22 +99,34 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
     return totalLen;
 }
 
-void BackendExtNetSession::processReply(parse_tree* redisReply, std::string* replyBinary, const char* replyBuffer, size_t replyLen)
+void BackendExtNetSession::processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
 {
 #ifdef PROXY_SINGLE_THREAD
     BackendParseMsg tmp;
     tmp.redisReply = redisReply;
-    tmp.responseBinary = replyBinary;
     tmp.responseBuffer = replyBuffer;
     tmp.responseLen = replyLen;
+    tmp.responseMemory = new std::shared_ptr< std::string >;   /*todo,避免构造智能指针*/
+    if (responseBinary != nullptr)
+    {
+        *tmp.responseMemory = responseBinary;
+    }
+    else
+    {
+        tmp.responseMemory->reset(new std::string(replyBuffer, replyLen));
+    }
     mLogicSession->onReply(tmp);
 #else
     BackendParseMsg tmp;
     tmp.redisReply = redisReply;
-    tmp.responseBinary = replyBinary;
-    if (tmp.responseBinary == nullptr)
+    tmp.responseMemory = new std::shared_ptr<std::string>;
+    if (responseBinary == nullptr)
     {
-        tmp.responseBinary = new std::string(replyBuffer, replyLen);
+        tmp.responseMemory->reset(new std::string(replyBuffer, replyLen));
+    }
+    else
+    {
+        *tmp.responseMemory = responseBinary;
     }
     pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
 #endif
@@ -208,15 +215,15 @@ void BackendLogicSession::onReply(BackendParseMsg& netParseMsg)
         assert(false);
     }
 
-    if (netParseMsg.responseBinary != nullptr)
-    {
-        delete netParseMsg.responseBinary;
-        netParseMsg.responseBinary = nullptr;
-    }
     if (netParseMsg.redisReply != nullptr)
     {
         parse_tree_del(netParseMsg.redisReply);
         netParseMsg.redisReply = nullptr;
+    }
+    if (netParseMsg.responseMemory != nullptr)
+    {
+        delete netParseMsg.responseMemory;
+        netParseMsg.responseMemory = nullptr;
     }
 }
 

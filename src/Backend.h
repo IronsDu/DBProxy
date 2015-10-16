@@ -21,10 +21,10 @@ public:
 
 private:
     virtual int     onMsg(const char* buffer, int len) override;
-    void            processReply(parse_tree* redisReply, std::string* replyBinary, const char* replyBuffer, size_t replyLen);
+    void            processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
 private:
     parse_tree*     mRedisParse;
-    std::string*    mCache;
+    std::shared_ptr<string> mCache;
     std::shared_ptr<BackendLogicSession>    mLogicSession;
 };
 

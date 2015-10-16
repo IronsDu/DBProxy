@@ -14,28 +14,27 @@ struct BackendParseMsg
     BackendParseMsg()
     {
         redisReply = nullptr;
-        responseBinary = nullptr;
         responseBuffer = nullptr;
+        responseMemory = nullptr;
         responseLen = 0;
     }
 
-    std::string* transfer()
+    std::shared_ptr<std::string> transfer()
     {
-        std::string* ret = responseBinary;
-        if (ret == nullptr)
+        if (responseMemory == nullptr)
         {
-            ret = new std::string(responseBuffer, responseLen);
+            return std::make_shared<std::string>(responseBuffer, responseLen);
         }
-
-        responseBinary = nullptr;
-
-        return ret;
+        else
+        {
+            return *responseMemory;
+        }
     }
 
     parse_tree* redisReply;
-    std::string* responseBinary;
     const char* responseBuffer;
     size_t responseLen;
+    std::shared_ptr<std::string>*    responseMemory;
 };
 
 class BaseWaitReply
@@ -72,14 +71,13 @@ protected:
         PendingResponseStatus()
         {
             dbServerSocketID = 0;
-            responseBinary = nullptr;
             ssdbReply = nullptr;
             redisReply = nullptr;
             forceOK = false;
         }
 
         int64_t                 dbServerSocketID;       /*  此等待的response所在的db服务器的id    */
-        std::string*            responseBinary;         /*  原始的(未解析)response报文 */
+        std::shared_ptr<std::string>    responseBinary;
         SSDBProtocolResponse*   ssdbReply;              /*  解析好的ssdb response*/
         parse_tree*             redisReply;
         bool                    forceOK;                /*  是否强制设置成功    */
