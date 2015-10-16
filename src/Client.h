@@ -9,21 +9,24 @@
 struct parse_tree;
 class BaseWaitReply;
 class SSDBProtocolResponse;
+class ClientLogicSession;
 
 /*  代理服务器的客户端(网络线程)网络层会话    */
 class ClientExtNetSession : public ExtNetSession
 {
 public:
-    ClientExtNetSession(BaseLogicSession::PTR logicSession);
+    ClientExtNetSession(std::shared_ptr<ClientLogicSession> logicSession);
 
     ~ClientExtNetSession();
 
 private:
     virtual int     onMsg(const char* buffer, int len) override;
+    void            processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, const char* requestBuffer, size_t requestLen);
 
 private:
     parse_tree*     mRedisParse;
     std::string*    mCache;
+    std::shared_ptr<ClientLogicSession> mLogicSession;
 };
 
 /*  代理服务器的客户端(逻辑线程)逻辑层会话    */
@@ -33,6 +36,7 @@ public:
     ClientLogicSession();
     /*  处理等待队列中已经完成的请求以及确认出错的请求 */
     void            processCompletedReply();
+    void            onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, const char* requestBuffer, size_t requestLen);
 private:
     virtual void    onEnter() override;
     virtual void    onClose() override;
@@ -45,15 +49,15 @@ private:
     void            pushRedisStatusReply(const char* status);
 
 private:
-    bool            procSSDBAuth(SSDBProtocolResponse*, std::string* requestStr);
-    bool            procSSDBPing(SSDBProtocolResponse*, std::string* requestStr);
-    bool            procSSDBMultiSet(SSDBProtocolResponse*, std::string* requestStr);
-    bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, SSDBProtocolResponse*, std::string* requestStr, const char* command);
-    bool            procSSDBSingleCommand(SSDBProtocolResponse*, std::string* requestStr);
+    bool            procSSDBAuth(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBPing(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBMultiSet(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen, const char* command);
+    bool            procSSDBSingleCommand(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
 
-    bool            processRedisSingleCommand(parse_tree* parse, std::string* requestStr);
-    bool            processRedisMset(parse_tree* parse, std::string* requestStr);
-    bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::string* requestStr, const char* command);
+    bool            processRedisSingleCommand(parse_tree* parse, const char* requestBuffer, size_t requestLen);
+    bool            processRedisMset(parse_tree* parse, const char* requestBuffer, size_t requestLen);
+    bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, const char* requestBuffer, size_t requestLen, const char* command);
 
 private:
     std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;

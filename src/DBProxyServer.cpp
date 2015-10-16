@@ -118,9 +118,17 @@ int main()
 
         WrapServer::PTR server = std::make_shared<WrapServer>();
 
+        int netWorkerThreadNum = 1;
+#ifdef PROXY_SINGLE_THREAD
+        netWorkerThreadNum = 1;
+#endif
         /*开启网络线程*/
         server->startWorkThread(1, [&](EventLoop&){
             syncNet2LogicMsgList(mainLoop);
+#ifdef PROXY_SINGLE_THREAD
+            procNet2LogicMsgList();
+            server->getService()->flushCachePackectList();
+#endif
         });
 
         /*链接数据库服务器*/
@@ -154,8 +162,10 @@ int main()
 
             mainLoop.loop(1);
             /*  处理网络线程投递过来的消息 */
+#ifndef PROXY_SINGLE_THREAD
             procNet2LogicMsgList();
             server->getService()->flushCachePackectList();
+#endif
         }
 
         server->getListenThread().closeListenThread();

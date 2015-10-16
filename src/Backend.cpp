@@ -9,7 +9,7 @@
 
 std::vector<BackendLogicSession*>    gBackendClients;
 
-BackendExtNetSession::BackendExtNetSession(BaseLogicSession::PTR logicSession) : ExtNetSession(logicSession)
+BackendExtNetSession::BackendExtNetSession(std::shared_ptr<BackendLogicSession> logicSession) : ExtNetSession(logicSession), mLogicSession(logicSession)
 {
     cout << "BackendExtNetSession::BackendExtNetSession" << endl;
     mRedisParse = nullptr;
@@ -58,20 +58,12 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
             {
                 if (mCache == nullptr)
                 {
-                    BackendParseMsg tmp;
-                    tmp.responseBinary = new string(parseStartPos, parseEndPos - parseStartPos);
-                    tmp.redisReply = mRedisParse;
-                    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
+                    processReply(mRedisParse, nullptr, parseStartPos, parseEndPos - parseStartPos);
                 }
                 else
                 {
                     mCache->append(parseStartPos, parseEndPos - parseStartPos);
-
-                    BackendParseMsg tmp;
-                    tmp.responseBinary = mCache;
-                    tmp.redisReply = mRedisParse;
-                    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
-
+                    processReply(mRedisParse, mCache, mCache->c_str(), mCache->size());
                     mCache = nullptr;
                 }
 
@@ -101,9 +93,7 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
         int packetLen = 0;
         while ((packetLen = SSDBProtocolResponse::check_ssdb_packet(parseStartPos, leftLen)) > 0)
         {
-            BackendParseMsg tmp;
-            tmp.responseBinary = new string(parseStartPos, packetLen);
-            pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
+            processReply(mRedisParse, nullptr, parseStartPos, packetLen);
 
             totalLen += packetLen;
             leftLen -= packetLen;
@@ -112,6 +102,27 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
     }
 
     return totalLen;
+}
+
+void BackendExtNetSession::processReply(parse_tree* redisReply, std::string* replyBinary, const char* replyBuffer, size_t replyLen)
+{
+#ifdef PROXY_SINGLE_THREAD
+    BackendParseMsg tmp;
+    tmp.redisReply = redisReply;
+    tmp.responseBinary = replyBinary;
+    tmp.responseBuffer = replyBuffer;
+    tmp.responseLen = replyLen;
+    mLogicSession->onReply(tmp);
+#else
+    BackendParseMsg tmp;
+    tmp.redisReply = redisReply;
+    tmp.responseBinary = replyBinary;
+    if (tmp.responseBinary == nullptr)
+    {
+        tmp.responseBinary = new std::string(replyBuffer, replyLen);
+    }
+    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
+#endif
 }
 
 void BackendLogicSession::onEnter() 
@@ -174,11 +185,8 @@ int BackendLogicSession::getID() const
     return mID;
 }
 
-/*  收到网络层发送过来的db reply  */
-void BackendLogicSession::onMsg(const char* buffer, int len)
+void BackendLogicSession::onReply(BackendParseMsg& netParseMsg)
 {
-    BackendParseMsg* netParseMsg = (BackendParseMsg*)buffer;
-
     if (!mPendingWaitReply.empty())
     {
         ClientLogicSession* client = nullptr;
@@ -186,7 +194,7 @@ void BackendLogicSession::onMsg(const char* buffer, int len)
         auto reply = replyPtr.lock();
         if (reply != nullptr)
         {
-            reply->onBackendReply(getSocketID(), *netParseMsg);
+            reply->onBackendReply(getSocketID(), netParseMsg);
             client = reply->getClient();
         }
         mPendingWaitReply.pop();
@@ -200,16 +208,23 @@ void BackendLogicSession::onMsg(const char* buffer, int len)
         assert(false);
     }
 
-    if (netParseMsg->responseBinary != nullptr)
+    if (netParseMsg.responseBinary != nullptr)
     {
-        delete netParseMsg->responseBinary;
-        netParseMsg->responseBinary = nullptr;
+        delete netParseMsg.responseBinary;
+        netParseMsg.responseBinary = nullptr;
     }
-    if (netParseMsg->redisReply != nullptr)
+    if (netParseMsg.redisReply != nullptr)
     {
-        parse_tree_del(netParseMsg->redisReply);
-        netParseMsg->redisReply = nullptr;
+        parse_tree_del(netParseMsg.redisReply);
+        netParseMsg.redisReply = nullptr;
     }
+}
+
+/*  收到网络层发送过来的db reply  */
+void BackendLogicSession::onMsg(const char* buffer, int len)
+{
+    BackendParseMsg* netParseMsg = (BackendParseMsg*)buffer;
+    onReply(*netParseMsg);
 }
 
 BackendLogicSession* findBackendByID(int id)

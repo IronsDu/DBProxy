@@ -59,8 +59,7 @@ void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseM
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.responseBinary;
-            msg.responseBinary = nullptr;
+            v.responseBinary = msg.transfer();
             break;
         }
     }
@@ -88,8 +87,7 @@ void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendPars
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.responseBinary;
-            msg.responseBinary = nullptr;
+            v.responseBinary = msg.transfer();
 
             if (mWaitResponses.size() != 1)
             {
@@ -160,8 +158,7 @@ void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendPars
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.responseBinary;
-            msg.responseBinary = nullptr;
+            v.responseBinary = msg.transfer();
 
             if (mWaitResponses.size() != 1)
             {

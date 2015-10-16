@@ -75,9 +75,6 @@
     <ClCompile Include="..\3rdparty\ssdb\RedisSSDBCovert.cpp">
       <Filter>dbutils</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\ssdb\SSDBMultiClient.cpp">
-      <Filter>dbutils</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rdparty\ssdb\SSDBProtocol.cpp">
       <Filter>dbutils</Filter>
     </ClCompile>
@@ -252,9 +249,6 @@
       <Filter>dbutils</Filter>
     </ClInclude>
     <ClInclude Include="..\3rdparty\ssdb\socketlibtypes.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\SSDBMultiClient.h">
       <Filter>dbutils</Filter>
     </ClInclude>
     <ClInclude Include="..\3rdparty\ssdb\SSDBProtocol.h">

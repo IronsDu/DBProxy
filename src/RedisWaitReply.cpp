@@ -18,8 +18,7 @@ void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParse
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.responseBinary;
-            msg.responseBinary = nullptr;
+            v.responseBinary = msg.transfer();
             break;
         }
     }
@@ -102,8 +101,7 @@ void RedisMgetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMs
             }
             else
             {
-                v.responseBinary = msg.responseBinary;
-                msg.responseBinary = nullptr;
+                v.responseBinary = msg.transfer();
             }
 
             break;
@@ -210,8 +208,7 @@ void RedisDelWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg
             }
             else
             {
-                v.responseBinary = msg.responseBinary;
-                msg.responseBinary = nullptr;
+                v.responseBinary = msg.transfer();
             }
 
             break;
@@ -231,6 +228,7 @@ void RedisDelWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
+            /*TODO::诸如此类，直接将responseBinary作为socket的packet ptr，避免重复构造内存*/
             client->cacheSend(mWaitResponses.front().responseBinary->c_str(), mWaitResponses.front().responseBinary->size());
         }
         else

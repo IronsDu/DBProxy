@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include "WrapTCPService.h"
 
-#define USE_DELAY_SEND
-
 class BaseLogicSession
 {
 public:

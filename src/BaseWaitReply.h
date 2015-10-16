@@ -15,10 +15,27 @@ struct BackendParseMsg
     {
         redisReply = nullptr;
         responseBinary = nullptr;
+        responseBuffer = nullptr;
+        responseLen = 0;
+    }
+
+    std::string* transfer()
+    {
+        std::string* ret = responseBinary;
+        if (ret == nullptr)
+        {
+            ret = new std::string(responseBuffer, responseLen);
+        }
+
+        responseBinary = nullptr;
+
+        return ret;
     }
 
     parse_tree* redisReply;
     std::string* responseBinary;
+    const char* responseBuffer;
+    size_t responseLen;
 };
 
 class BaseWaitReply

@@ -118,7 +118,6 @@
     <ClCompile Include="..\3rdparty\net\TCPService.cpp" />
     <ClCompile Include="..\3rdparty\net\WrapTCPService.cpp" />
     <ClCompile Include="..\3rdparty\ssdb\RedisSSDBCovert.cpp" />
-    <ClCompile Include="..\3rdparty\ssdb\SSDBMultiClient.cpp" />
     <ClCompile Include="..\3rdparty\ssdb\SSDBProtocol.cpp" />
     <ClCompile Include="..\3rdparty\utils\lua_readtable.cpp" />
     <ClCompile Include="..\3rdparty\utils\ox_file.cpp" />
@@ -153,7 +152,6 @@
     <ClInclude Include="..\3rdparty\ssdb\RedisRequest.h" />
     <ClInclude Include="..\3rdparty\ssdb\RedisSSDBCovert.h" />
     <ClInclude Include="..\3rdparty\ssdb\socketlibtypes.h" />
-    <ClInclude Include="..\3rdparty\ssdb\SSDBMultiClient.h" />
     <ClInclude Include="..\3rdparty\ssdb\SSDBProtocol.h" />
     <ClInclude Include="..\3rdparty\utils\lua_readtable.h" />
     <ClInclude Include="..\3rdparty\utils\msgqueue.h" />
