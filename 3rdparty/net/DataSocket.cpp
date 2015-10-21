@@ -112,6 +112,19 @@ void    DataSocket::send(const char* buffer, int len)
     sendPacket(makePacket(buffer, len));
 }
 
+void DataSocket::sendPacketInLoop(const PACKET_PTR& packet)
+{
+    assert(mEventLoop->isInLoopThread());
+    mSendList.push_back({ packet, packet->size() });
+    runAfterFlush();
+}
+
+void DataSocket::sendPacketInLoop(PACKET_PTR&& packet)
+{
+    assert(mEventLoop->isInLoopThread());
+    sendPacketInLoop(packet);
+}
+
 void DataSocket::sendPacket(const PACKET_PTR& packet)
 {
     mEventLoop->pushAsyncProc([this, packet](){
