@@ -51,9 +51,9 @@ private:
 private:
     bool            procSSDBAuth(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
     bool            procSSDBPing(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
-    bool            procSSDBMultiSet(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
-    bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen, const char* command);
-    bool            procSSDBSingleCommand(SSDBProtocolResponse*, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBMultiSet(SSDBProtocolResponse*, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, SSDBProtocolResponse*, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
+    bool            procSSDBSingleCommand(SSDBProtocolResponse*, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
 
     bool            processRedisSingleCommand(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
     bool            processRedisMset(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);

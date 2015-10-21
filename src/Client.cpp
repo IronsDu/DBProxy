@@ -32,9 +32,9 @@ struct ParseMsg
         requestBinary = nullptr;
     }
 
-    SSDBProtocolResponse* ssdbRequest;
-    parse_tree* redisRequest;
-    std::shared_ptr<std::string>*   requestBinary;
+    SSDBProtocolResponse* ssdbRequest;  /*解析出的ssdb request协议*/
+    parse_tree* redisRequest;           /*解析出的redis request协议*/
+    std::shared_ptr<std::string>*   requestBinary; /*原始的协议报文(用于可直接转发给某backend server时，避免重新构造request报文*/
 };
 
 /*  收到客户端的请求,并解析请求投入到逻辑消息队列    */
@@ -110,9 +110,11 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
         char* parseStartPos = (char*)buffer;
         int leftLen = len;
         int packetLen = 0;
+
         while ((packetLen = SSDBProtocolResponse::check_ssdb_packet(parseStartPos, leftLen)) > 0)
         {
 #ifdef PROXY_SINGLE_THREAD
+            /*单线程时，即可解析好ssdb 协议*/
             SSDBProtocolResponse* ssdbQuery = new SSDBProtocolResponse;
             ssdbQuery->parse(parseStartPos);
             processRequest(false, ssdbQuery, nullptr, mCache, parseStartPos, packetLen);
@@ -129,9 +131,20 @@ int ClientExtNetSession::onMsg(const char* buffer, int len)
     return totalLen;
 }
 
+/*
+    isRedis：是否redis request
+    ssdbQuery：解析好的ssdb request，可能为null
+    redisRequest：解析好的redis request，可能为null
+    requestBinary：原始的request报文(智能指针)，可能为null
+    requestBuffer：原始的报文内存起始点，不可能为null
+    requestLen：原始的报文长度，非0
+
+    同时传递requestBinary和requestBuffer，是为了处理requestBinary为null的情况，如果它不为null，那么后续处理里可能直接用它作为send参数的(就可以避免再为send构造一次packet内存!!!)。
+*/
 void ClientExtNetSession::processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
 #ifdef PROXY_SINGLE_THREAD
+    /*单线程时，直接调用onRequest，直接复用requestBinary*/
     mLogicSession->onRequest(isRedis, ssdbQuery, redisRequest, requestBinary, requestBuffer, requestLen);
     if (redisRequest != nullptr)
     {
@@ -144,6 +157,12 @@ void ClientExtNetSession::processRequest(bool isRedis, SSDBProtocolResponse* ssd
         ssdbQuery = nullptr;
     }
 #else
+    /*多线程时，直接复用requestBinary和redisRequest（如果requestBinary为null，则即可复制构造）,且如果是ssdb协议的话，需要即可解析好ssdb 报文（且此时ssdbQuery参数必定为null)*/
+    assert(ssdbQuery == nullptr);
+
+    /*todo::目前ParseMsg的成员必须为指针，是因为现在网络层和逻辑层的多个地方通信，采用了同一种结构，类似void*，所以这里如果用智能指针成员，则会立即销毁内存
+    所以下面为了其requestBinary分配了两次内存*/
+
     ParseMsg tmp;
     tmp.requestBinary = new std::shared_ptr<std::string>;
     if (requestBinary != nullptr)
@@ -241,19 +260,19 @@ void ClientLogicSession::onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery
                     }
                     else if (strncmp("multi_set", op->buffer, op->len) == 0)
                     {
-                        isSuccess = procSSDBMultiSet(ssdbQuery, requestBuffer, requestLen);
+                        isSuccess = procSSDBMultiSet(ssdbQuery, requestBinary, requestBuffer, requestLen);
                     }
                     else if (strncmp("multi_get", op->buffer, op->len) == 0)
                     {
-                        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(this), ssdbQuery, requestBuffer, requestLen, "multi_get");
+                        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(this), ssdbQuery, requestBinary, requestBuffer, requestLen, "multi_get");
                     }
                     else if (strncmp("multi_del", op->buffer, op->len) == 0)
                     {
-                        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(this), ssdbQuery, requestBuffer, requestLen, "multi_del");
+                        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(this), ssdbQuery, requestBinary, requestBuffer, requestLen, "multi_del");
                     }
                     else
                     {
-                        isSuccess = procSSDBSingleCommand(ssdbQuery, requestBuffer, requestLen);
+                        isSuccess = procSSDBSingleCommand(ssdbQuery, requestBinary, requestBuffer, requestLen);
                     }
                 }
             }
@@ -363,7 +382,7 @@ bool ClientLogicSession::procSSDBPing(SSDBProtocolResponse*, const char* request
     return true;
 }
 
-bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, const char* requestBuffer, size_t requestLen)
+bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = (request->getBuffersLen() - 1) % 2 == 0 && request->getBuffersLen() > 1;
 
@@ -408,7 +427,14 @@ bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, const c
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->cacheSend(requestBuffer, requestLen);
+            if (requestBinary != nullptr)
+            {
+                server->cacheSend(requestBinary);
+            }
+            else
+            {
+                server->cacheSend(requestBuffer, requestLen);
+            }
         }
         else
         {
@@ -438,7 +464,7 @@ bool ClientLogicSession::procSSDBMultiSet(SSDBProtocolResponse* request, const c
     return isSuccess;
 }
 
-bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, SSDBProtocolResponse* request, const char* requestBuffer, size_t requestLen, const char* command)
+bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, SSDBProtocolResponse* request, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
 {
     bool isSuccess = request->getBuffersLen() > 1;
 
@@ -477,7 +503,14 @@ bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitRepl
 
             w->addWaitServer(server->getSocketID());
             server->pushPendingWaitReply(w);
-            server->cacheSend(requestBuffer, requestLen);
+            if (requestBinary != nullptr)
+            {
+                server->cacheSend(requestBinary);
+            }
+            else
+            {
+                server->cacheSend(requestBuffer, requestLen);
+            }
         }
         else
         {
@@ -507,7 +540,7 @@ bool ClientLogicSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitRepl
     return isSuccess;
 }
 
-bool ClientLogicSession::procSSDBSingleCommand(SSDBProtocolResponse* request, const char* requestBuffer, size_t requestLen)
+bool ClientLogicSession::procSSDBSingleCommand(SSDBProtocolResponse* request, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = false;
     
@@ -520,7 +553,14 @@ bool ClientLogicSession::procSSDBSingleCommand(SSDBProtocolResponse* request, co
         auto server = findBackendByID(serverID);
         w->addWaitServer(server->getSocketID());
         server->pushPendingWaitReply(w);
-        server->cacheSend(requestBuffer, requestLen);
+        if (requestBinary != nullptr)
+        {
+            server->cacheSend(requestBinary);
+        }
+        else
+        {
+            server->cacheSend(requestBuffer, requestLen);
+        }
 
         mPendingReply.push_back(w);
     }
