@@ -117,6 +117,7 @@ int main()
         EventLoop mainLoop;
 
         WrapServer::PTR server = std::make_shared<WrapServer>();
+        ListenThread::PTR listenThread = std::make_shared<ListenThread>();
 
         int netWorkerThreadNum = 1;
 #ifdef PROXY_SINGLE_THREAD
@@ -147,7 +148,7 @@ int main()
 
        // gDailyLogger->info("listen proxy port:{}", listenPort);
         /*开启代理服务器监听*/
-        server->getListenThread().startListen(listenPort, nullptr, nullptr, [&](int fd){
+        listenThread->startListen(listenPort, nullptr, nullptr, [&](int fd){
             WrapAddNetSession(server, fd, make_shared<ClientExtNetSession>(std::make_shared<ClientLogicSession>()), -1);
         });
 
@@ -168,7 +169,7 @@ int main()
 #endif
         }
 
-        server->getListenThread().closeListenThread();
+        listenThread->closeListenThread();
         server->getService()->closeService();
         syncNet2LogicMsgList(mainLoop);
         procNet2LogicMsgList();
