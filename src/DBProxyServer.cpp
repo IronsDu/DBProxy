@@ -28,12 +28,22 @@ extern "C"
 using namespace std;
 
 string sharding_function;
-struct lua_State* L = nullptr;
 
-bool sharding_key(const char* str, int len, int& serverID)
+/*TODO::让每一个Client一个Lua虚拟机，以并行的执行脚本，避免加锁*/
+bool sharding_key(struct lua_State* L, const char* str, int len, int& serverID)
 {
     serverID = lua_tinker::call<int>(L, sharding_function.c_str(), string(str, len));   /*使用string是怕str没有结束符*/
     return true;
+}
+
+struct lua_State* malloc_luaState()
+{
+    lua_State* L = luaL_newstate();
+    luaopen_base(L);
+    luaL_openlibs(L);
+    /*TODO::由启动参数指定配置路径*/
+    lua_tinker::dofile(L, "Config.lua");
+    return L;
 }
 
 #if defined(_MSC_VER)
@@ -78,6 +88,7 @@ int     app_kbhit(void)
 int main()
 {
     {
+        struct lua_State* L = nullptr;
         int listenPort;         /*代理服务器的监听端口*/
         ox_socket_init();
         std::vector<std::tuple<int, string, int>> backendConfigs;
@@ -119,18 +130,9 @@ int main()
         WrapServer::PTR server = std::make_shared<WrapServer>();
         ListenThread::PTR listenThread = std::make_shared<ListenThread>();
 
-        int netWorkerThreadNum = 1;
-#ifdef PROXY_SINGLE_THREAD
-        netWorkerThreadNum = 1;
-#endif
+        int netWorkerThreadNum = ox_getcpunum();
         /*开启网络线程*/
-        server->startWorkThread(1, [&](EventLoop&){
-            syncNet2LogicMsgList(mainLoop);
-#ifdef PROXY_SINGLE_THREAD
-            procNet2LogicMsgList();
-            server->getService()->flushCachePackectList();
-#endif
-        });
+        server->startWorkThread(netWorkerThreadNum, nullptr);
 
         /*链接数据库服务器*/
         for (auto& v : backendConfigs)
@@ -141,15 +143,15 @@ int main()
 
             //gDailyLogger->info("connec db server id:{}, address: {}:{}", id, ip, port);
             sock fd = ox_socket_connect(ip.c_str(), port);
-            auto bserver = std::make_shared<BackendLogicSession>();
+            auto bserver = std::make_shared<BackendSession>();
             bserver->setID(id);
-            WrapAddNetSession(server, fd, make_shared<BackendExtNetSession>(bserver), -1);
+            WrapAddNetSession(server, fd, bserver, -1);
         }
 
        // gDailyLogger->info("listen proxy port:{}", listenPort);
         /*开启代理服务器监听*/
         listenThread->startListen(listenPort, nullptr, nullptr, [&](int fd){
-            WrapAddNetSession(server, fd, make_shared<ClientExtNetSession>(std::make_shared<ClientLogicSession>()), -1);
+            WrapAddNetSession(server, fd, make_shared<ClientSession>(), -1);
         });
 
         //gDailyLogger->warn("db proxy server start!");
@@ -162,17 +164,10 @@ int main()
             }
 
             mainLoop.loop(1);
-            /*  处理网络线程投递过来的消息 */
-#ifndef PROXY_SINGLE_THREAD
-            procNet2LogicMsgList();
-            server->getService()->flushCachePackectList();
-#endif
         }
 
         listenThread->closeListenThread();
         server->getService()->closeService();
-        syncNet2LogicMsgList(mainLoop);
-        procNet2LogicMsgList();
         lua_close(L);
         L = nullptr;
     }

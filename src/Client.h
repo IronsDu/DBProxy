@@ -4,44 +4,30 @@
 #include <memory>
 #include <deque>
 #include <string>
-#include "NetThreadSession.h"
+
+#include "NetSession.h"
 
 struct parse_tree;
 class BaseWaitReply;
 class SSDBProtocolResponse;
-class ClientLogicSession;
 
 /*  代理服务器的客户端(网络线程)网络层会话    */
-class ClientExtNetSession : public ExtNetSession
+class ClientSession : public BaseNetSession, public std::enable_shared_from_this<ClientSession>
 {
 public:
-    ClientExtNetSession(std::shared_ptr<ClientLogicSession> logicSession);
+    ClientSession();
+    ~ClientSession();
 
-    ~ClientExtNetSession();
+    void            processCompletedReply();
 
 private:
     virtual int     onMsg(const char* buffer, int len) override;
+    void            onEnter() override;
+    void            onClose() override;
+
     void            processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
 
-private:
-    parse_tree*     mRedisParse;
-    std::shared_ptr<std::string> mCache;
-    std::shared_ptr<ClientLogicSession> mLogicSession;
-};
-
-/*  代理服务器的客户端(逻辑线程)逻辑层会话    */
-class ClientLogicSession : public BaseLogicSession, public std::enable_shared_from_this<ClientLogicSession>
-{
-public:
-    ClientLogicSession();
-    /*  处理等待队列中已经完成的请求以及确认出错的请求 */
-    void            processCompletedReply();
     void            onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
-private:
-    virtual void    onEnter() override;
-    virtual void    onClose() override;
-    virtual void    onMsg(const char* buffer, int len) override;
-
 private:
     void            pushSSDBStrListReply(const std::vector < const char* > &strlist);
     void            pushSSDBErrorReply(const char* error);
@@ -60,10 +46,14 @@ private:
     bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
 
 private:
+    parse_tree*                                     mRedisParse;
+    std::shared_ptr<std::string>                    mCache;
+
     std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;
     bool                                            mNeedAuth;
     bool                                            mIsAuth;
     string                                          mPassword;
+    struct lua_State*                               mLua;
 };
 
 #endif

@@ -7,7 +7,7 @@ using namespace std;
 #include "WrapTCPService.h"
 
 /*应用服务器的网络层会话对象基类*/
-class BaseNetSession : public std::enable_shared_from_this<BaseNetSession>
+class BaseNetSession
 {
 public:
     typedef std::shared_ptr<BaseNetSession>  PTR;
@@ -45,7 +45,7 @@ public:
         return mIP;
     }
 
-    int64_t         getID() const
+    int64_t         getSocketID() const
     {
         return mSocketID;
     }
@@ -63,6 +63,11 @@ public:
     void            sendPacket(const DataSocket::PACKET_PTR& packet)
     {
         mServer->getService()->send(mSocketID, packet);
+    }
+
+    EventLoop*      getEventLoop()
+    {
+        return mServer->getService()->getEventLoopBySocketID(mSocketID);
     }
 private:
     std::string         mIP;

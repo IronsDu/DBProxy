@@ -113,7 +113,6 @@
     <ClCompile Include="..\3rdparty\net\DataSocket.cpp" />
     <ClCompile Include="..\3rdparty\net\EventLoop.cpp" />
     <ClCompile Include="..\3rdparty\net\NetSession.cpp" />
-    <ClCompile Include="..\3rdparty\net\NetThreadSession.cpp" />
     <ClCompile Include="..\3rdparty\net\SocketLibFunction.c" />
     <ClCompile Include="..\3rdparty\net\TCPService.cpp" />
     <ClCompile Include="..\3rdparty\net\WrapTCPService.cpp" />
@@ -138,9 +137,7 @@
     <ClInclude Include="..\3rdparty\net\DataSocket.h" />
     <ClInclude Include="..\3rdparty\net\dllconf.h" />
     <ClInclude Include="..\3rdparty\net\EventLoop.h" />
-    <ClInclude Include="..\3rdparty\net\LogicNetSession.h" />
     <ClInclude Include="..\3rdparty\net\NetSession.h" />
-    <ClInclude Include="..\3rdparty\net\NetThreadSession.h" />
     <ClInclude Include="..\3rdparty\net\platform.h" />
     <ClInclude Include="..\3rdparty\net\SocketLibFunction.h" />
     <ClInclude Include="..\3rdparty\net\SocketLibTypes.h" />

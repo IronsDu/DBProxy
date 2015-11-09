@@ -3,7 +3,7 @@
 
 #include "BaseWaitReply.h"
 
-BaseWaitReply::BaseWaitReply(ClientLogicSession* client) : mClient(client), mErrorCode(nullptr)
+BaseWaitReply::BaseWaitReply(std::shared_ptr<ClientSession>& client) : mClient(client), mErrorCode(nullptr)
 {}
 
 BaseWaitReply::~BaseWaitReply()
@@ -31,7 +31,7 @@ BaseWaitReply::~BaseWaitReply()
     }
 }
 
-ClientLogicSession* BaseWaitReply::getClient()
+std::shared_ptr<ClientSession>& BaseWaitReply::getClient()
 {
     return mClient;
 }

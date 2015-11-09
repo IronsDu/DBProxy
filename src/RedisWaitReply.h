@@ -6,19 +6,19 @@
 class RedisSingleWaitReply : public BaseWaitReply
 {
 public:
-    RedisSingleWaitReply(ClientLogicSession* client);
+    RedisSingleWaitReply(std::shared_ptr<ClientSession>& client);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 };
 
 class RedisStatusReply : public BaseWaitReply
 {
 public:
-    RedisStatusReply(ClientLogicSession* client, const char* status);
+    RedisStatusReply(std::shared_ptr<ClientSession>& client, const char* status);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 
 private:
     std::string     mStatus;
@@ -27,10 +27,10 @@ private:
 class RedisErrorReply : public BaseWaitReply
 {
 public:
-    RedisErrorReply(ClientLogicSession* client, const char* error);
+    RedisErrorReply(std::shared_ptr<ClientSession>& client, const char* error);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 
 private:
     std::string     mErrorCode;
@@ -39,10 +39,10 @@ private:
 class RedisWrongTypeReply : public BaseWaitReply
 {
 public:
-    RedisWrongTypeReply(ClientLogicSession* client, const char* wrongType, const char* detail);
+    RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 
 private:
     std::string     mWrongType;
@@ -52,28 +52,28 @@ private:
 class RedisMgetWaitReply : public BaseWaitReply
 {
 public:
-    RedisMgetWaitReply(ClientLogicSession* client);
+    RedisMgetWaitReply(std::shared_ptr<ClientSession> client);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 };
 
 class RedisMsetWaitReply : public BaseWaitReply
 {
 public:
-    RedisMsetWaitReply(ClientLogicSession* client);
+    RedisMsetWaitReply(std::shared_ptr<ClientSession>& client);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 };
 
 class RedisDelWaitReply : public BaseWaitReply
 {
 public:
-    RedisDelWaitReply(ClientLogicSession* client);
+    RedisDelWaitReply(std::shared_ptr<ClientSession>& client);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(ClientLogicSession*);
+    void            mergeAndSend(std::shared_ptr<ClientSession>&);
 };
 
 #endif

@@ -5,53 +5,44 @@
 #include <queue>
 #include <vector>
 #include <string>
-#include "NetThreadSession.h"
+
+#include "NetSession.h"
 
 class BaseWaitReply;
 struct parse_tree;
-class BackendLogicSession;
 struct BackendParseMsg;
 
 /*  链接db服务器的(网络线程-网络层)会话  */
-class BackendExtNetSession : public ExtNetSession
+class BackendSession : public BaseNetSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
-    BackendExtNetSession(std::shared_ptr<BackendLogicSession> logicSession);
-    ~BackendExtNetSession();
+    BackendSession();
+    ~BackendSession();
 
-private:
-    virtual int     onMsg(const char* buffer, int len) override;
-    void            processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
-private:
-    parse_tree*     mRedisParse;
-    std::shared_ptr<string> mCache;
-    std::shared_ptr<BackendLogicSession>    mLogicSession;
-};
+    void            forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>& r, const char* b, size_t len);
+    void            forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>&& r, const char* b, size_t len);
 
-class ClientLogicSession;
-
-/*  链接db服务器的(逻辑线程-逻辑层)会话    */
-class BackendLogicSession : public BaseLogicSession
-{
-public:
-    BackendLogicSession();
-    ~BackendLogicSession();
-    void            pushPendingWaitReply(std::weak_ptr<BaseWaitReply>);
     void            setID(int id);
     int             getID() const;
 
     void            onReply(BackendParseMsg& netParseMsg);
+
 private:
-    virtual void    onEnter() override;
-    virtual void    onClose() override;
-    virtual void    onMsg(const char* buffer, int len) override;
-    
+    virtual int     onMsg(const char* buffer, int len) override;
+    void            onEnter() override;
+    void            onClose() override;
+
+    void            processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
 private:
+    parse_tree*                                 mRedisParse;
+    std::shared_ptr<string>                     mCache;
+
+    std::mutex                                  mPendingListLock;
     std::queue<std::weak_ptr<BaseWaitReply>>    mPendingWaitReply;
     int                                         mID;
 };
 
-extern std::vector<BackendLogicSession*>    gBackendClients;
+extern std::vector<shared_ptr<BackendSession>>    gBackendClients;
+shared_ptr<BackendSession>    findBackendByID(int id);
 
-BackendLogicSession*    findBackendByID(int id);
 #endif

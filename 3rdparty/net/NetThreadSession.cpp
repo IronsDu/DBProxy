@@ -9,7 +9,7 @@ void ExtNetSession::pushDataMsgToLogicThread(const char* data, int len)
 
 void ExtNetSession::onEnter()
 {
-    mLogicSession->setSession(getServer(), getID(), getIP());
+    mLogicSession->setSession(getServer(), getSocketID(), getIP());
     Net2LogicMsg tmp(mLogicSession, Net2LogicMsgTypeEnter);
     gNet2LogicMsgList.Push(tmp);
 }

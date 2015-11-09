@@ -449,6 +449,21 @@ EventLoop* TcpService::getRandomEventLoop()
     return ret;
 }
 
+EventLoop* TcpService::getEventLoopBySocketID(int64_t id)
+{
+    union  SessionId sid;
+    sid.id = id;
+    assert(sid.data.loopIndex >= 0 && sid.data.loopIndex < mLoopNum);
+    if (sid.data.loopIndex >= 0 && sid.data.loopIndex < mLoopNum)
+    {
+        return &mLoops[sid.data.loopIndex];
+    }
+    else
+    {
+        return nullptr;
+    }
+}
+
 int64_t TcpService::MakeID(int loopIndex)
 {
     union SessionId sid;

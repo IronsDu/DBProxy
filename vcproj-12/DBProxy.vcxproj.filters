@@ -81,9 +81,6 @@
     <ClCompile Include="..\3rdparty\utils\timer.cpp">
       <Filter>utils</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\net\NetThreadSession.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rdparty\net\NetSession.cpp">
       <Filter>net</Filter>
     </ClCompile>
@@ -263,14 +260,8 @@
     <ClInclude Include="..\3rdparty\utils\timer.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\NetThreadSession.h">
-      <Filter>net</Filter>
-    </ClInclude>
     <ClInclude Include="..\3rdparty\utils\msgqueue.h">
       <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\net\LogicNetSession.h">
-      <Filter>net</Filter>
     </ClInclude>
     <ClInclude Include="..\3rdparty\net\NetSession.h">
       <Filter>net</Filter>

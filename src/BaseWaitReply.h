@@ -5,7 +5,7 @@
 #include <memory>
 #include <vector>
 
-class ClientLogicSession;
+class ClientSession;
 class SSDBProtocolResponse;
 struct parse_tree;
 
@@ -43,15 +43,15 @@ public:
     typedef std::shared_ptr<BaseWaitReply>  PTR;
     typedef std::weak_ptr<BaseWaitReply>    WEAK_PTR;
 
-    BaseWaitReply(ClientLogicSession* client);
-    ClientLogicSession*  getClient();
+    BaseWaitReply(std::shared_ptr<ClientSession>& client);
+    std::shared_ptr<ClientSession>&  getClient();
 
     virtual ~BaseWaitReply();
 public:
     /*  收到db服务器的返回值 */
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&) = 0;
     /*  当所有db服务器都返回数据后，调用此函数尝试合并返回值并发送给客户端  */
-    virtual void    mergeAndSend(ClientLogicSession*) = 0;
+    virtual void    mergeAndSend(std::shared_ptr<ClientSession>&) = 0;
 
 public:
     /*  检测是否所有等待的db服务器均已返回数据    */
@@ -85,7 +85,7 @@ protected:
 
     std::vector<PendingResponseStatus>  mWaitResponses; /*  等待的各个服务器返回值的状态  */
 
-    ClientLogicSession*                 mClient;
+    std::shared_ptr<ClientSession> mClient;
     std::string*                        mErrorCode;
 };
 

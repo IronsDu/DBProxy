@@ -1,4 +1,5 @@
 #include <fstream>
+#include <memory>
 
 #include "RedisParse.h"
 #include "Client.h"
@@ -7,18 +8,20 @@
 
 #include "Backend.h"
 
-std::vector<BackendLogicSession*>    gBackendClients;
+class ClientSession;
+std::vector<shared_ptr<BackendSession>>    gBackendClients;
+std::mutex gBackendClientsLock;
 
-BackendExtNetSession::BackendExtNetSession(std::shared_ptr<BackendLogicSession> logicSession) : ExtNetSession(logicSession), mLogicSession(logicSession)
+BackendSession::BackendSession()
 {
-    cout << "BackendExtNetSession::BackendExtNetSession" << endl;
+    cout << "BackendSession::BackendSession" << endl;
     mRedisParse = nullptr;
     mCache = nullptr;
 }
 
-BackendExtNetSession::~BackendExtNetSession()
+BackendSession::~BackendSession()
 {
-    cout << "BackendExtNetSession::~BackendExtNetSession" << endl;
+    cout << "BackendSession::~BackendSession" << endl;
     if (mRedisParse != nullptr)
     {
         parse_tree_del(mRedisParse);
@@ -26,8 +29,52 @@ BackendExtNetSession::~BackendExtNetSession()
     }
 }
 
+void BackendSession::onEnter()
+{
+    gBackendClientsLock.lock();
+    gBackendClients.push_back(shared_from_this());
+    gBackendClientsLock.unlock();
+}
+
+void BackendSession::onClose()
+{
+    gBackendClientsLock.lock();
+
+    for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
+    {
+        if ((*it).get() == this)
+        {
+            gBackendClients.erase(it);
+            break;
+        }
+    }
+
+    /*  当与db server断开后，对等待此服务器响应的客户端请求设置错误(返回给客户端)  */
+    while (!mPendingWaitReply.empty())
+    {
+        std::shared_ptr<ClientSession> client = nullptr;
+        auto& w = mPendingWaitReply.front();
+        auto wp = w.lock();
+        if (wp != nullptr)
+        {
+            wp->setError("backend error");
+            client = wp->getClient();
+        }
+        mPendingWaitReply.pop();
+        if (client != nullptr)
+        {
+            client->getEventLoop()->pushAsyncProc([client](){
+                client->processCompletedReply();
+            });
+        }
+    }
+
+
+    gBackendClientsLock.unlock();
+}
+
 /*  收到db server的reply，解析并放入逻辑消息队列   */
-int BackendExtNetSession::onMsg(const char* buffer, int len)
+int BackendSession::onMsg(const char* buffer, int len)
 {
     int totalLen = 0;
 
@@ -99,9 +146,8 @@ int BackendExtNetSession::onMsg(const char* buffer, int len)
     return totalLen;
 }
 
-void BackendExtNetSession::processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
+void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
 {
-#ifdef PROXY_SINGLE_THREAD
     BackendParseMsg tmp;
     tmp.redisReply = redisReply;
     tmp.responseBuffer = replyBuffer;
@@ -115,99 +161,72 @@ void BackendExtNetSession::processReply(parse_tree* redisReply, std::shared_ptr<
     {
         tmp.responseMemory->reset(new std::string(replyBuffer, replyLen));
     }
-    mLogicSession->onReply(tmp);
-#else
-    BackendParseMsg tmp;
-    tmp.redisReply = redisReply;
-    tmp.responseMemory = new std::shared_ptr<std::string>;
-    if (responseBinary == nullptr)
+
+    onReply(tmp);
+}
+
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>& r, const char* b, size_t len)
+{
+    w->addWaitServer(getSocketID());
+    mPendingListLock.lock();
+    mPendingWaitReply.push(w);
+    if (r != nullptr)
     {
-        tmp.responseMemory->reset(new std::string(replyBuffer, replyLen));
+        sendPacket(r);
     }
     else
     {
-        *tmp.responseMemory = responseBinary;
+        sendPacket(b, len);
     }
-    pushDataMsgToLogicThread((const char*)&tmp, sizeof(tmp));
-#endif
+    mPendingListLock.unlock();
 }
 
-void BackendLogicSession::onEnter() 
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>&& r, const char* b, size_t len)
 {
-    gBackendClients.push_back(this);
+    forward(w, r, b, len);
 }
 
-void BackendLogicSession::onClose()
-{
-    for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
-    {
-        if (*it == this)
-        {
-            gBackendClients.erase(it);
-            break;
-        }
-    }
-    
-    /*  当与db server断开后，对等待此服务器响应的客户端请求设置错误(返回给客户端)  */
-    while (!mPendingWaitReply.empty())
-    {
-        ClientLogicSession* client = nullptr;
-        auto& w = mPendingWaitReply.front();
-        auto wp = w.lock();
-        if (wp != nullptr)
-        {
-            wp->setError("backend error");
-            client = wp->getClient();
-        }
-        mPendingWaitReply.pop();
-        if (client != nullptr)
-        {
-            client->processCompletedReply();
-        }
-    }
-}
-
-BackendLogicSession::BackendLogicSession()
-{
-    cout << "BackendLogicSession::BackendLogicSession()" << endl;
-}
-
-BackendLogicSession::~BackendLogicSession()
-{
-    cout << "BackendLogicSession::~BackendLogicSession" << endl;
-}
-
-void BackendLogicSession::pushPendingWaitReply(std::weak_ptr<BaseWaitReply> w)
-{
-    mPendingWaitReply.push(w);
-}
-
-void BackendLogicSession::setID(int id)
+void BackendSession::setID(int id)
 {
     mID = id;
 }
 
-int BackendLogicSession::getID() const
+int BackendSession::getID() const
 {
     return mID;
 }
 
-void BackendLogicSession::onReply(BackendParseMsg& netParseMsg)
+void BackendSession::onReply(BackendParseMsg& netParseMsg)
 {
     if (!mPendingWaitReply.empty())
     {
-        ClientLogicSession* client = nullptr;
-        auto& replyPtr = mPendingWaitReply.front();
-        auto reply = replyPtr.lock();
+        std::shared_ptr<ClientSession> client = nullptr;
+        std::shared_ptr<BaseWaitReply> reply = nullptr;
+
+        mPendingListLock.lock();
+        reply = mPendingWaitReply.front().lock();
+        mPendingWaitReply.pop();
+        mPendingListLock.unlock();
+
         if (reply != nullptr)
         {
             reply->onBackendReply(getSocketID(), netParseMsg);
             client = reply->getClient();
         }
-        mPendingWaitReply.pop();
+        
         if (client != nullptr)
         {
-            client->processCompletedReply();
+            auto eventLoop = client->getEventLoop();
+            if (eventLoop->isInLoopThread())
+            {
+                client->processCompletedReply();
+            }
+            else
+            {
+                eventLoop->pushAsyncProc([client](){
+                    client->processCompletedReply();
+                });
+            }
         }
     }
     else
@@ -227,16 +246,11 @@ void BackendLogicSession::onReply(BackendParseMsg& netParseMsg)
     }
 }
 
-/*  收到网络层发送过来的db reply  */
-void BackendLogicSession::onMsg(const char* buffer, int len)
+shared_ptr<BackendSession> findBackendByID(int id)
 {
-    BackendParseMsg* netParseMsg = (BackendParseMsg*)buffer;
-    onReply(*netParseMsg);
-}
+    shared_ptr<BackendSession> ret = nullptr;
 
-BackendLogicSession* findBackendByID(int id)
-{
-    BackendLogicSession* ret = nullptr;
+    gBackendClientsLock.lock();
     for (auto& v : gBackendClients)
     {
         if (v->getID() == id)
@@ -245,6 +259,7 @@ BackendLogicSession* findBackendByID(int id)
             break;
         }
     }
+    gBackendClientsLock.unlock();
 
     return ret;
 }

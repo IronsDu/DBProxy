@@ -58,6 +58,11 @@ public:
         mServer->getService()->send(mSocketID, packet);
 #endif
     }
+
+    EventLoop*          getEventLoop()
+    {
+        return mServer->getService()->getEventLoopBySocketID(mSocketID);
+    }
 private:
     WrapServer::PTR     mServer;
     int64_t             mSocketID;

@@ -7,7 +7,7 @@
 static const std::string SSDB_OK = "ok";
 static const std::string SSDB_ERROR = "error";
 
-static void syncSSDBStrList(ClientLogicSession* client, const std::vector<std::string>& strList)
+static void syncSSDBStrList(std::shared_ptr<ClientSession>& client, const std::vector<std::string>& strList)
 {
     static SSDBProtocolRequest strsResponse;
     strsResponse.init();
@@ -15,10 +15,10 @@ static void syncSSDBStrList(ClientLogicSession* client, const std::vector<std::s
     strsResponse.writev(strList);
     strsResponse.endl();
 
-    client->cacheSend(strsResponse.getResult(), strsResponse.getResultLen());
+    client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
-StrListSSDBReply::StrListSSDBReply(ClientLogicSession* client) : BaseWaitReply(client)
+StrListSSDBReply::StrListSSDBReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
 {
 }
 
@@ -27,10 +27,10 @@ void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&
 
 }
 
-void StrListSSDBReply::mergeAndSend(ClientLogicSession* client)
+void StrListSSDBReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     mStrListResponse.endl();
-    client->cacheSend(mStrListResponse.getResult(), mStrListResponse.getResultLen());
+    client->sendPacket(mStrListResponse.getResult(), mStrListResponse.getResultLen());
 }
 
 void StrListSSDBReply::pushStr(std::string&& str)
@@ -48,7 +48,7 @@ void StrListSSDBReply::pushStr(const char* str)
     mStrListResponse.appendStr(str);
 }
 
-SSDBSingleWaitReply::SSDBSingleWaitReply(ClientLogicSession* client) : BaseWaitReply(client)
+SSDBSingleWaitReply::SSDBSingleWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
 {
 }
 
@@ -65,7 +65,7 @@ void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseM
     }
 }
 
-void SSDBSingleWaitReply::mergeAndSend(ClientLogicSession* client)
+void SSDBSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
@@ -73,11 +73,11 @@ void SSDBSingleWaitReply::mergeAndSend(ClientLogicSession* client)
     }
     else
     {
-        client->cacheSend(mWaitResponses.front().responseBinary);
+        client->sendPacket(mWaitResponses.front().responseBinary);
     }
 }
 
-SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(ClientLogicSession* client) : BaseWaitReply(client)
+SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
 {
 }
 
@@ -100,7 +100,7 @@ void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendPars
     }
 }
 
-void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
+void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
@@ -110,7 +110,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->cacheSend(mWaitResponses.front().responseBinary);
+            client->sendPacket(mWaitResponses.front().responseBinary);
         }
         else
         {
@@ -133,7 +133,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
 
             if (errorReply != nullptr)
             {
-                client->cacheSend(errorReply);
+                client->sendPacket(errorReply);
             }
             else
             {
@@ -142,13 +142,13 @@ void SSDBMultiSetWaitReply::mergeAndSend(ClientLogicSession* client)
 
                 response.writev(SSDB_OK, num);
                 response.endl();
-                client->cacheSend(response.getResult(), response.getResultLen());
+                client->sendPacket(response.getResult(), response.getResultLen());
             }
         }
     }
 }
 
-SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(ClientLogicSession* client) : BaseWaitReply(client)
+SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
 {
 }
 
@@ -171,7 +171,7 @@ void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendPars
     }
 }
 
-void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
+void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
@@ -181,7 +181,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->cacheSend(mWaitResponses.front().responseBinary);
+            client->sendPacket(mWaitResponses.front().responseBinary);
         }
         else
         {
@@ -201,7 +201,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
 
             if (errorReply != nullptr)
             {
-                client->cacheSend(errorReply);
+                client->sendPacket(errorReply);
             }
             else
             {
@@ -215,7 +215,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(ClientLogicSession* client)
                 }
                 
                 strsResponse.endl();
-                client->cacheSend(strsResponse.getResult(), strsResponse.getResultLen());
+                client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
             }
         }
     }
