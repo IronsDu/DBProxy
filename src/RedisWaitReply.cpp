@@ -6,7 +6,7 @@
 
 #include "RedisWaitReply.h"
 
-RedisSingleWaitReply::RedisSingleWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+RedisSingleWaitReply::RedisSingleWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
@@ -40,7 +40,7 @@ void RedisSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-RedisStatusReply::RedisStatusReply(std::shared_ptr<ClientSession>& client, const char* status) : BaseWaitReply(client), mStatus(status)
+RedisStatusReply::RedisStatusReply(std::shared_ptr<ClientSession> client, const char* status) : BaseWaitReply(client), mStatus(status)
 {
 }
 
@@ -55,7 +55,7 @@ void RedisStatusReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(tmp.c_str(), tmp.size());
 }
 
-RedisErrorReply::RedisErrorReply(std::shared_ptr<ClientSession>& client, const char* error) : BaseWaitReply(client), mErrorCode(error)
+RedisErrorReply::RedisErrorReply(std::shared_ptr<ClientSession> client, const char* error) : BaseWaitReply(client), mErrorCode(error)
 {
 }
 
@@ -70,7 +70,7 @@ void RedisErrorReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(tmp.c_str(), tmp.size());
 }
 
-RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession>& client, const char* wrongType, const char* detail) :
+RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail) :
     BaseWaitReply(client), mWrongType(wrongType), mWrongDetail(detail)
 {
 }
@@ -86,7 +86,7 @@ void RedisWrongTypeReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(tmp.c_str(), tmp.size());
 }
 
-RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
@@ -160,7 +160,7 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-RedisMsetWaitReply::RedisMsetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+RedisMsetWaitReply::RedisMsetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
@@ -197,7 +197,7 @@ void RedisMsetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-RedisDelWaitReply::RedisDelWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+RedisDelWaitReply::RedisDelWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 

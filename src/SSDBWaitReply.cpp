@@ -18,7 +18,7 @@ static void syncSSDBStrList(std::shared_ptr<ClientSession>& client, const std::v
     client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
-StrListSSDBReply::StrListSSDBReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+StrListSSDBReply::StrListSSDBReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
@@ -48,7 +48,7 @@ void StrListSSDBReply::pushStr(const char* str)
     mStrListResponse.appendStr(str);
 }
 
-SSDBSingleWaitReply::SSDBSingleWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+SSDBSingleWaitReply::SSDBSingleWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
@@ -77,7 +77,7 @@ void SSDBSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
@@ -148,7 +148,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
+SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
 
