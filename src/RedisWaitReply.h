@@ -39,7 +39,7 @@ private:
 class RedisWrongTypeReply : public BaseWaitReply
 {
 public:
-    RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail);
+    RedisWrongTypeReply(std::shared_ptr<ClientSession>& client, const char* wrongType, const char* detail);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(std::shared_ptr<ClientSession>&);
@@ -52,7 +52,7 @@ private:
 class RedisMgetWaitReply : public BaseWaitReply
 {
 public:
-    RedisMgetWaitReply(std::shared_ptr<ClientSession> client);
+    RedisMgetWaitReply(std::shared_ptr<ClientSession>& client);
 private:
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
     void            mergeAndSend(std::shared_ptr<ClientSession>&);

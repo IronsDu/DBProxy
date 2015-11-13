@@ -25,8 +25,6 @@ public:
     void            setID(int id);
     int             getID() const;
 
-    void            onReply(BackendParseMsg& netParseMsg);
-
 private:
     virtual int     onMsg(const char* buffer, int len) override;
     void            onEnter() override;
@@ -37,7 +35,6 @@ private:
     parse_tree*                                 mRedisParse;
     std::shared_ptr<string>                     mCache;
 
-    std::mutex                                  mPendingListLock;
     std::queue<std::weak_ptr<BaseWaitReply>>    mPendingWaitReply;
     int                                         mID;
 };

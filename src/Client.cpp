@@ -20,6 +20,7 @@ extern struct lua_State* malloc_luaState();
 
 ClientSession::ClientSession()
 {
+    mPendingReply = new std::deque < std::shared_ptr<BaseWaitReply> > ;
     cout << "ClientSession::ClientSession()" << endl;
     mRedisParse = nullptr;
     mLua = malloc_luaState();
@@ -29,7 +30,6 @@ ClientSession::ClientSession()
 
 ClientSession::~ClientSession()
 {
-    cout << "ClientSession::~ClientSession()" << endl;
     if (mRedisParse != nullptr)
     {
         parse_tree_del(mRedisParse);
@@ -80,20 +80,48 @@ int ClientSession::onMsg(const char* buffer, int len)
         {
             if (mRedisParse == nullptr)
             {
-                /*TODO::处理非完成的服务器操作相关命令--非数据操作相关的命令协议*/
-                if (strncmp(parseStartPos, "PING\r\n", 6) == 0)
-                {
-                    processRequest(true, nullptr, nullptr, mCache, parseStartPos, 6);
+                const static std::vector<string> notDataRequest = { "PING\r\n" };
 
-                    totalLen += 6;
-                    parseStartPos += 6;
+                bool isWaitDataCompleteRequest = false;
+                bool isFindCompleteRequest = false;
 
-                    continue;
-                }
-                else
+                for (auto& v : notDataRequest)
                 {
-                    mRedisParse = parse_tree_new();
+                    const size_t leftLen = len - totalLen;
+                    if (leftLen < v.size())
+                    {
+                        size_t findPos = v.find(parseStartPos, 0, leftLen);
+                        if (findPos != string::npos)
+                        {
+                            isWaitDataCompleteRequest = true;
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        if (v.compare(0, v.size(), parseStartPos, v.size()) == 0)
+                        {
+                            processRequest(true, nullptr, nullptr, mCache, parseStartPos, v.size());
+                            totalLen += v.size();
+                            parseStartPos += v.size();
+
+                            isFindCompleteRequest = true;
+                            break;
+                        }
+                    }
                 }
+                
+                if (isWaitDataCompleteRequest) /*需要等待非完整的命令，退出本次处理*/
+                {
+                    break;
+                }
+
+                if (isFindCompleteRequest)  /*找到完整的非数据相关命令，回到开始尝试处理下一个命令*/
+                {
+                    continue;;
+                }
+
+                mRedisParse = parse_tree_new(); /*构造处理数据相关redis命令解析器*/
             }
 
             int parseRet = parse(mRedisParse, &parseEndPos, (char*)buffer+len);
@@ -164,51 +192,6 @@ int ClientSession::onMsg(const char* buffer, int len)
     同时传递requestBinary和requestBuffer，是为了处理requestBinary为null的情况，如果它不为null，那么后续处理里可能直接用它作为send参数的(就可以避免再为send构造一次packet内存!!!)。
 */
 void ClientSession::processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
-{
-    onRequest(isRedis, ssdbQuery, redisRequest, requestBinary, requestBuffer, requestLen);
-    if (redisRequest != nullptr)
-    {
-        parse_tree_del(redisRequest);
-        redisRequest = nullptr;
-    }
-    if (ssdbQuery != nullptr)
-    {
-        delete ssdbQuery;
-        ssdbQuery = nullptr;
-    }
-}
-
-void ClientSession::pushSSDBStrListReply(const std::vector< const char*> &strlist)
-{
-    std::shared_ptr<StrListSSDBReply> reply = std::make_shared<StrListSSDBReply>(shared_from_this());
-    for (auto& v : strlist)
-    {
-        reply->pushStr(v);
-    }
-    mPendingReply.push_back(reply);
-    processCompletedReply();
-}
-
-void ClientSession::pushSSDBErrorReply(const char* error)
-{
-    pushSSDBStrListReply({ "error", error });
-}
-
-void ClientSession::pushRedisErrorReply(const char* error)
-{
-    BaseWaitReply::PTR w = std::make_shared<RedisErrorReply>(shared_from_this(), error);
-    mPendingReply.push_back(w);
-    processCompletedReply();
-}
-
-void ClientSession::pushRedisStatusReply(const char* status)
-{
-    BaseWaitReply::PTR w = std::make_shared<RedisStatusReply>(shared_from_this(), status);
-    mPendingReply.push_back(w);
-    processCompletedReply();
-}
-
-void ClientSession::onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
 {
     if (!isRedis)
     {
@@ -304,6 +287,47 @@ void ClientSession::onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, par
             }
         }
     }
+
+    if (redisRequest != nullptr)
+    {
+        parse_tree_del(redisRequest);
+        redisRequest = nullptr;
+    }
+    if (ssdbQuery != nullptr)
+    {
+        delete ssdbQuery;
+        ssdbQuery = nullptr;
+    }
+}
+
+void ClientSession::pushSSDBStrListReply(const std::vector< const char*> &strlist)
+{
+    std::shared_ptr<StrListSSDBReply> reply = std::make_shared<StrListSSDBReply>(shared_from_this());
+    for (auto& v : strlist)
+    {
+        reply->pushStr(v);
+    }
+    mPendingReply->push_back(reply);
+    processCompletedReply();
+}
+
+void ClientSession::pushSSDBErrorReply(const char* error)
+{
+    pushSSDBStrListReply({ "error", error });
+}
+
+void ClientSession::pushRedisErrorReply(const char* error)
+{
+    BaseWaitReply::PTR w = std::make_shared<RedisErrorReply>(shared_from_this(), error);
+    mPendingReply->push_back(w);
+    processCompletedReply();
+}
+
+void ClientSession::pushRedisStatusReply(const char* status)
+{
+    BaseWaitReply::PTR w = std::make_shared<RedisStatusReply>(shared_from_this(), status);
+    mPendingReply->push_back(w);
+    processCompletedReply();
 }
 
 bool ClientSession::procSSDBAuth(SSDBProtocolResponse* request, const char* requestBuffer, size_t requestLen)
@@ -405,7 +429,7 @@ bool ClientSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_
             }
         }
 
-        mPendingReply.push_back(w);
+        mPendingReply->push_back(w);
     }
 
     return isSuccess;
@@ -474,8 +498,7 @@ bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w,
                 }
             }
         }
-
-        mPendingReply.push_back(w);
+        mPendingReply->push_back(w);
     }
 
     return isSuccess;
@@ -496,8 +519,7 @@ bool ClientSession::procSSDBSingleCommand(SSDBProtocolResponse* request, std::sh
         {
             server->forward(w, requestBinary, requestBuffer, requestLen);
         }
-
-        mPendingReply.push_back(w);
+        mPendingReply->push_back(w);
     }
 
     return isSuccess;
@@ -510,15 +532,14 @@ bool ClientSession::processRedisSingleCommand(parse_tree* parse, std::shared_ptr
     int serverID;
     if (sharding_key(mLua, parse->reply->element[1]->str, parse->reply->element[1]->len, serverID))
     {
-        isSuccess = true;
-        BaseWaitReply::PTR w = std::make_shared<RedisSingleWaitReply>(shared_from_this());
         auto server = findBackendByID(serverID);
         if (server != nullptr)
         {
+            isSuccess = true;
+            BaseWaitReply::PTR w = std::make_shared<RedisSingleWaitReply>(shared_from_this());
             server->forward(w, requestBinary, requestBuffer, requestLen);
+            mPendingReply->push_back(w);
         }
-
-        mPendingReply.push_back(w);
     }
 
     return isSuccess;
@@ -594,8 +615,7 @@ bool ClientSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::str
                 }
             }
         }
-
-        mPendingReply.push_back(w);
+        mPendingReply->push_back(w);
     }
 
     return isSuccess;
@@ -665,8 +685,7 @@ bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply
                 }
             }
         }
-
-        mPendingReply.push_back(w);
+        mPendingReply->push_back(w);
     }
 
     return isSuccess;
@@ -675,13 +694,19 @@ bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply
 void ClientSession::processCompletedReply()
 {
     auto tmp = shared_from_this();
-    while (!mPendingReply.empty())
+    while (!mPendingReply->empty())
     {
-        auto& w = mPendingReply.front();
-        if (w->isAllCompleted() || w->hasError())
+        auto& w = mPendingReply->front();
+        bool r = false;
+        w->lockWaitList();
+        r = w->isAllCompleted() || w->hasError();
+        w->unLockWaitList();
+        if (r)
         {
+            w->lockWaitList();
             w->mergeAndSend(tmp);
-            mPendingReply.pop_front();
+            w->unLockWaitList();
+            mPendingReply->pop_front();
         }
         else
         {

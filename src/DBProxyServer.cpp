@@ -1,7 +1,6 @@
 #include "platform.h"
 
 #ifdef PLATFORM_WINDOWS
-#include <vld.h>
 #include <stdlib.h>
 #include <crtdbg.h>
 #endif
@@ -29,7 +28,6 @@ using namespace std;
 
 string sharding_function;
 
-/*TODO::让每一个Client一个Lua虚拟机，以并行的执行脚本，避免加锁*/
 bool sharding_key(struct lua_State* L, const char* str, int len, int& serverID)
 {
     serverID = lua_tinker::call<int>(L, sharding_function.c_str(), string(str, len));   /*使用string是怕str没有结束符*/
@@ -88,6 +86,7 @@ int     app_kbhit(void)
 int main()
 {
     {
+        srand(time(nullptr));
         struct lua_State* L = nullptr;
         int listenPort;         /*代理服务器的监听端口*/
         ox_socket_init();

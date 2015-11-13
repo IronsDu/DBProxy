@@ -19,6 +19,7 @@ public:
 
     virtual ~BaseNetSession()
     {
+        mSocketID = 0;
     }
 
     void    setSession(WrapServer::PTR server, int64_t socketID, const string& ip)

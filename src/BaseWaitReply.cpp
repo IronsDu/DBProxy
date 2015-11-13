@@ -45,6 +45,7 @@ void BaseWaitReply::addWaitServer(int64_t serverSocketID)
 
 void BaseWaitReply::setError(const char* errorCode)
 {
+    /*TODO::error ¼ÓËø*/
     mErrorCode = new std::string(errorCode);
 }
 

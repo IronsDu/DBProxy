@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <mutex>
 
 class ClientSession;
 class SSDBProtocolResponse;
@@ -47,6 +48,16 @@ public:
     std::shared_ptr<ClientSession>&  getClient();
 
     virtual ~BaseWaitReply();
+
+    void    lockWaitList()
+    {
+        mLock.lock();
+    }
+
+    void    unLockWaitList()
+    {
+        mLock.unlock();
+    }
 public:
     /*  收到db服务器的返回值 */
     virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&) = 0;
@@ -83,10 +94,12 @@ protected:
         bool                    forceOK;                /*  是否强制设置成功    */
     };
 
-    std::vector<PendingResponseStatus>  mWaitResponses; /*  等待的各个服务器返回值的状态  */
+    std::vector<PendingResponseStatus>  mWaitResponses; /*  等待的各个服务器返回值的状态  */  /*ToOD::或许它没得线程安全问题*/
 
-    std::shared_ptr<ClientSession> mClient;
+    std::shared_ptr<ClientSession>      mClient;
     std::string*                        mErrorCode;
+
+    std::mutex                          mLock;
 };
 
 #endif

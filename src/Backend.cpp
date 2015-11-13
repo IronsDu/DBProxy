@@ -53,8 +53,7 @@ void BackendSession::onClose()
     while (!mPendingWaitReply.empty())
     {
         std::shared_ptr<ClientSession> client = nullptr;
-        auto& w = mPendingWaitReply.front();
-        auto wp = w.lock();
+        auto wp = mPendingWaitReply.front().lock();
         if (wp != nullptr)
         {
             wp->setError("backend error");
@@ -63,12 +62,18 @@ void BackendSession::onClose()
         mPendingWaitReply.pop();
         if (client != nullptr)
         {
-            client->getEventLoop()->pushAsyncProc([client](){
+            if (client->getEventLoop()->isInLoopThread())
+            {
                 client->processCompletedReply();
-            });
+            }
+            else
+            {
+                client->getEventLoop()->pushAsyncProc([client](){
+                    client->processCompletedReply();
+                });
+            }
         }
     }
-
 
     gBackendClientsLock.unlock();
 }
@@ -148,72 +153,34 @@ int BackendSession::onMsg(const char* buffer, int len)
 
 void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
 {
-    BackendParseMsg tmp;
-    tmp.redisReply = redisReply;
-    tmp.responseBuffer = replyBuffer;
-    tmp.responseLen = replyLen;
-    tmp.responseMemory = new std::shared_ptr< std::string >;   /*todo,避免构造智能指针*/
+    BackendParseMsg netParseMsg;
+    netParseMsg.redisReply = redisReply;
+    netParseMsg.responseBuffer = replyBuffer;
+    netParseMsg.responseLen = replyLen;
+    netParseMsg.responseMemory = new std::shared_ptr< std::string >;   /*todo,避免构造智能指针*/
     if (responseBinary != nullptr)
     {
-        *tmp.responseMemory = responseBinary;
+        *netParseMsg.responseMemory = responseBinary;
     }
     else
     {
-        tmp.responseMemory->reset(new std::string(replyBuffer, replyLen));
+        netParseMsg.responseMemory->reset(new std::string(replyBuffer, replyLen));
     }
 
-    onReply(tmp);
-}
-
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>& r, const char* b, size_t len)
-{
-    w->addWaitServer(getSocketID());
-    mPendingListLock.lock();
-    mPendingWaitReply.push(w);
-    if (r != nullptr)
-    {
-        sendPacket(r);
-    }
-    else
-    {
-        sendPacket(b, len);
-    }
-    mPendingListLock.unlock();
-}
-
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>&& r, const char* b, size_t len)
-{
-    forward(w, r, b, len);
-}
-
-void BackendSession::setID(int id)
-{
-    mID = id;
-}
-
-int BackendSession::getID() const
-{
-    return mID;
-}
-
-void BackendSession::onReply(BackendParseMsg& netParseMsg)
-{
     if (!mPendingWaitReply.empty())
     {
         std::shared_ptr<ClientSession> client = nullptr;
-        std::shared_ptr<BaseWaitReply> reply = nullptr;
-
-        mPendingListLock.lock();
-        reply = mPendingWaitReply.front().lock();
+        std::shared_ptr<BaseWaitReply> reply = mPendingWaitReply.front().lock();
         mPendingWaitReply.pop();
-        mPendingListLock.unlock();
 
         if (reply != nullptr)
         {
+            reply->lockWaitList();
             reply->onBackendReply(getSocketID(), netParseMsg);
+            reply->unLockWaitList();
             client = reply->getClient();
         }
-        
+
         if (client != nullptr)
         {
             auto eventLoop = client->getEventLoop();
@@ -244,6 +211,40 @@ void BackendSession::onReply(BackendParseMsg& netParseMsg)
         delete netParseMsg.responseMemory;
         netParseMsg.responseMemory = nullptr;
     }
+}
+
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>& r, const char* b, size_t len)
+{
+    std::shared_ptr<string> t = r;
+    if (t == nullptr)
+    {
+        t = std::make_shared<std::string>(b, len);
+    }
+
+    w->lockWaitList();
+    w->addWaitServer(getSocketID());
+    w->unLockWaitList();
+
+    std::shared_ptr<BackendSession> pthis = shared_from_this();
+    getEventLoop()->pushAsyncProc([pthis, w, t](){
+        pthis->mPendingWaitReply.push(w);
+        pthis->sendPacket(t);
+    });
+}
+
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>&& r, const char* b, size_t len)
+{
+    forward(w, r, b, len);
+}
+
+void BackendSession::setID(int id)
+{
+    mID = id;
+}
+
+int BackendSession::getID() const
+{
+    return mID;
 }
 
 shared_ptr<BackendSession> findBackendByID(int id)

@@ -26,8 +26,7 @@ private:
     void            onClose() override;
 
     void            processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
-
-    void            onRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    
 private:
     void            pushSSDBStrListReply(const std::vector < const char* > &strlist);
     void            pushSSDBErrorReply(const char* error);
@@ -49,7 +48,7 @@ private:
     parse_tree*                                     mRedisParse;
     std::shared_ptr<std::string>                    mCache;
 
-    std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;
+    std::deque<std::shared_ptr<BaseWaitReply>>*     mPendingReply;
     bool                                            mNeedAuth;
     bool                                            mIsAuth;
     string                                          mPassword;

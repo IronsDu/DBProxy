@@ -30,9 +30,11 @@ void RedisSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         RedisErrorReply tmp(client, mErrorCode->c_str());
         BaseWaitReply* f = &tmp;
+        f->lockWaitList();
         f->mergeAndSend(client);
+        f->unLockWaitList();
     }
-    else
+    else if (!mWaitResponses.empty())
     {
         client->sendPacket(mWaitResponses.front().responseBinary);
     }
@@ -68,7 +70,7 @@ void RedisErrorReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(tmp.c_str(), tmp.size());
 }
 
-RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail) :
+RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession>& client, const char* wrongType, const char* detail) :
     BaseWaitReply(client), mWrongType(wrongType), mWrongDetail(detail)
 {
 }
@@ -84,7 +86,7 @@ void RedisWrongTypeReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(tmp.c_str(), tmp.size());
 }
 
-RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession>& client) : BaseWaitReply(client)
 {
 }
 
@@ -115,7 +117,9 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         RedisErrorReply tmp(client, mErrorCode->c_str());
         BaseWaitReply* f = &tmp;
+        f->lockWaitList();
         f->mergeAndSend(client);
+        f->unLockWaitList();
     }
     else
     {
@@ -179,7 +183,9 @@ void RedisMsetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         RedisErrorReply tmp(client, mErrorCode->c_str());
         BaseWaitReply* f = &tmp;
+        f->lockWaitList();
         f->mergeAndSend(client);
+        f->unLockWaitList();
     }
     else
     {
@@ -222,7 +228,9 @@ void RedisDelWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         RedisErrorReply tmp(client, mErrorCode->c_str());
         BaseWaitReply* f = &tmp;
+        f->lockWaitList();
         f->mergeAndSend(client);
+        f->unLockWaitList();
     }
     else
     {
