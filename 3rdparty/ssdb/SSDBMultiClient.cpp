@@ -446,6 +446,7 @@ void SSDBMultiClient::zscan(const std::string& name, const std::string& key_star
 {
     mRequestProtocol->init();
     mRequestProtocol->writev("zscan", name, key_start, score_start, score_end, limit);
+    mRequestProtocol->endl();
 
     pushStringListRequest(mRequestProtocol->getResult(), mRequestProtocol->getResultLen(), callback);
 }
