@@ -42,6 +42,16 @@ ClientSession::~ClientSession()
     }
 }
 
+RedisProtocolRequest& ClientSession::getCacheRedisProtocol()
+{
+    return mCacheRedisProtocol;
+}
+
+SSDBProtocolRequest& ClientSession::getCacheSSDBProtocol()
+{
+    return mCacheSSDBProtocol;
+}
+
 struct ParseMsg
 {
     ParseMsg()
@@ -408,7 +418,7 @@ bool ClientSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_
         }
         else
         {
-            static SSDBProtocolRequest request2Backend;
+            SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
 
             for (auto& v : kvsMap)
             {
@@ -478,7 +488,7 @@ bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w,
         }
         else
         {
-            static SSDBProtocolRequest request2Backend;
+            SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
 
             for (auto& v : serverKs)
             {
@@ -596,7 +606,7 @@ bool ClientSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::str
         }
         else
         {
-            static RedisProtocolRequest request2Backend;
+            RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
 
             for (auto& v : serverKvs)
             {
@@ -666,7 +676,7 @@ bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply
         }
         else
         {
-            static RedisProtocolRequest request2Backend;
+            RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
 
             for (auto& v : serverKs)
             {

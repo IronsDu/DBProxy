@@ -9,7 +9,7 @@ static const std::string SSDB_ERROR = "error";
 
 static void syncSSDBStrList(std::shared_ptr<ClientSession>& client, const std::vector<std::string>& strList)
 {
-    static SSDBProtocolRequest strsResponse;
+    SSDBProtocolRequest& strsResponse = client->getCacheSSDBProtocol();
     strsResponse.init();
 
     strsResponse.writev(strList);
@@ -52,7 +52,6 @@ SSDBSingleWaitReply::SSDBSingleWaitReply(std::shared_ptr<ClientSession> client) 
 {
 }
 
-/*  TODO::如果这个回复就是第一个pending reply，那么可以不用缓存而直接发送给客户端(减少内存拷贝)  */
 void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
 {
     for (auto& v : mWaitResponses)
@@ -137,7 +136,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
             }
             else
             {
-                static SSDBProtocolRequest response;
+                SSDBProtocolRequest& response = client->getCacheSSDBProtocol();
                 response.init();
 
                 response.writev(SSDB_OK, num);
@@ -187,8 +186,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
         {
             std::shared_ptr<std::string> errorReply = nullptr;
 
-            static vector<Bytes> kvs;
-            kvs.clear();
+            vector<Bytes> kvs;
 
             for (auto& v : mWaitResponses)
             {
@@ -205,7 +203,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
             }
             else
             {
-                static SSDBProtocolRequest strsResponse;
+                SSDBProtocolRequest& strsResponse = client->getCacheSSDBProtocol();
                 strsResponse.init();
 
                 strsResponse.writev(SSDB_OK);

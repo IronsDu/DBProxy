@@ -10,7 +10,6 @@ RedisSingleWaitReply::RedisSingleWaitReply(std::shared_ptr<ClientSession> client
 {
 }
 
-/*  TODO::如果这个回复就是第一个pending reply，那么可以不用缓存而直接发送给客户端(减少内存拷贝)  */
 void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
 {
     assert(mWaitResponses.size() == 1);
@@ -50,9 +49,10 @@ void RedisStatusReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&
 
 void RedisStatusReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
-    std::string tmp = "+" + mStatus;
-    tmp += "\r\n";
-    client->sendPacket(tmp.c_str(), tmp.size());
+    std::shared_ptr<std::string> tmp = std::make_shared<string>("+");
+    tmp->append(mStatus);
+    tmp->append("\r\n");
+    client->sendPacket(tmp);
 }
 
 RedisErrorReply::RedisErrorReply(std::shared_ptr<ClientSession> client, const char* error) : BaseWaitReply(client), mErrorCode(error)
@@ -65,9 +65,10 @@ void RedisErrorReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
 
 void RedisErrorReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
-    std::string tmp = "-ERR " + mErrorCode;
-    tmp += "\r\n";
-    client->sendPacket(tmp.c_str(), tmp.size());
+    std::shared_ptr<std::string> tmp = std::make_shared<string>("-ERR ");
+    tmp->append(mErrorCode);
+    tmp->append("\r\n");
+    client->sendPacket(tmp);
 }
 
 RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail) :
@@ -81,9 +82,12 @@ void RedisWrongTypeReply::onBackendReply(int64_t dbServerSocketID, BackendParseM
 
 void RedisWrongTypeReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
-    std::string tmp = "-WRONGTYPE " + mWrongType + " " + mWrongDetail;
-    tmp += "\r\n";
-    client->sendPacket(tmp.c_str(), tmp.size());
+    std::shared_ptr<std::string> tmp = std::make_shared<string>("-WRONGTYPE ");
+    tmp->append(mWrongType);
+    tmp->append(" ");
+    tmp->append(mWrongDetail);
+    tmp->append("\r\n");
+    client->sendPacket(tmp);
 }
 
 RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
@@ -129,29 +133,15 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
         }
         else
         {
-            struct Bytes
-            {
-                const char* str;
-                size_t len;
-            };
-
-            static vector<Bytes> vs;
-            vs.clear();
+            RedisProtocolRequest& strsResponse = client->getCacheRedisProtocol();
+            strsResponse.init();
 
             for (auto& v : mWaitResponses)
             {
                 for (size_t i = 0; i < v.redisReply->reply->elements; ++i)
                 {
-                    vs.push_back({ v.redisReply->reply->element[i]->str, v.redisReply->reply->element[i]->len});
+                    strsResponse.appendBinary(v.redisReply->reply->element[i]->str, v.redisReply->reply->element[i]->len);
                 }
-            }
-
-            static RedisProtocolRequest strsResponse;
-            strsResponse.init();
-
-            for (auto& v : vs)
-            {
-                strsResponse.appendBinary(v.str, v.len);
             }
 
             strsResponse.endl();
@@ -236,7 +226,6 @@ void RedisDelWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         if (mWaitResponses.size() == 1)
         {
-            /*TODO::诸如此类，直接将responseBinary作为socket的packet ptr，避免重复构造内存*/
             client->sendPacket(mWaitResponses.front().responseBinary);
         }
         else

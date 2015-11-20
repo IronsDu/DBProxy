@@ -7,6 +7,9 @@
 
 #include "NetSession.h"
 
+#include "SSDBProtocol.h"
+#include "RedisRequest.h"
+
 struct parse_tree;
 class BaseWaitReply;
 class SSDBProtocolResponse;
@@ -20,6 +23,8 @@ public:
 
     void            processCompletedReply();
 
+    RedisProtocolRequest&   getCacheRedisProtocol();
+    SSDBProtocolRequest&    getCacheSSDBProtocol();
 private:
     virtual int     onMsg(const char* buffer, int len) override;
     void            onEnter() override;
@@ -53,6 +58,9 @@ private:
     bool                                            mIsAuth;
     string                                          mPassword;
     struct lua_State*                               mLua;
+
+    RedisProtocolRequest                            mCacheRedisProtocol;
+    SSDBProtocolRequest                             mCacheSSDBProtocol;
 };
 
 #endif

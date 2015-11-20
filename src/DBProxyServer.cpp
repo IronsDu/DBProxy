@@ -86,7 +86,7 @@ int     app_kbhit(void)
 int main()
 {
     {
-        srand(time(nullptr));
+        srand(static_cast<unsigned int>(time(nullptr)));
         struct lua_State* L = nullptr;
         int listenPort;         /*代理服务器的监听端口*/
         ox_socket_init();

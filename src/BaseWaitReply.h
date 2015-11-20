@@ -15,27 +15,16 @@ struct BackendParseMsg
     BackendParseMsg()
     {
         redisReply = nullptr;
-        responseBuffer = nullptr;
         responseMemory = nullptr;
-        responseLen = 0;
     }
 
-    std::shared_ptr<std::string> transfer()
+    std::shared_ptr<std::string>& transfer()
     {
-        if (responseMemory == nullptr)
-        {
-            return std::make_shared<std::string>(responseBuffer, responseLen);
-        }
-        else
-        {
-            return *responseMemory;
-        }
+        return responseMemory;
     }
 
     parse_tree* redisReply;
-    const char* responseBuffer;
-    size_t responseLen;
-    std::shared_ptr<std::string>*    responseMemory;
+    std::shared_ptr<std::string>    responseMemory;
 };
 
 class BaseWaitReply

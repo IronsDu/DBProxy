@@ -56,7 +56,9 @@ void BackendSession::onClose()
         auto wp = mPendingWaitReply.front().lock();
         if (wp != nullptr)
         {
+            wp->lockWaitList();
             wp->setError("backend error");
+            wp->unLockWaitList();
             client = wp->getClient();
         }
         mPendingWaitReply.pop();
@@ -155,16 +157,13 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
 {
     BackendParseMsg netParseMsg;
     netParseMsg.redisReply = redisReply;
-    netParseMsg.responseBuffer = replyBuffer;
-    netParseMsg.responseLen = replyLen;
-    netParseMsg.responseMemory = new std::shared_ptr< std::string >;   /*todo,避免构造智能指针*/
     if (responseBinary != nullptr)
     {
-        *netParseMsg.responseMemory = responseBinary;
+        netParseMsg.responseMemory = responseBinary;
     }
     else
     {
-        netParseMsg.responseMemory->reset(new std::string(replyBuffer, replyLen));
+        netParseMsg.responseMemory.reset(new std::string(replyBuffer, replyLen));
     }
 
     if (!mPendingWaitReply.empty())
@@ -205,11 +204,6 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
     {
         parse_tree_del(netParseMsg.redisReply);
         netParseMsg.redisReply = nullptr;
-    }
-    if (netParseMsg.responseMemory != nullptr)
-    {
-        delete netParseMsg.responseMemory;
-        netParseMsg.responseMemory = nullptr;
     }
 }
 
