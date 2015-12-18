@@ -90,20 +90,20 @@ typename std::map<K, V>::mapped_type& map_at(std::map<K, V>& m, K k)
     if (it == m.end())
     {
         string e = "not found key :" + k;
-        throw std::exception(e.c_str());
+        throw std::runtime_error(e.c_str());
     }
 
     return it->second;
 }
 
 template<typename K, typename V>
-typename const std::map<K, V>::mapped_type& map_at(const std::map<K, V>& m, K k)
+const typename std::map<K, V>::mapped_type& map_at(const std::map<K, V>& m, K k)
 {
     auto it = m.find(k);
     if (it == m.end())
     {
         string e = "not found key :" + k;
-        throw std::exception(e.c_str());
+        throw std::runtime_error(e.c_str());
     }
 
     return it->second;
@@ -131,7 +131,7 @@ int main()
             }
             else
             {
-                throw std::exception("not found lua file");
+                throw std::runtime_error("not found lua file");
             }
 
             map<string, msvalue_s*>& allconfig = *config._map;
