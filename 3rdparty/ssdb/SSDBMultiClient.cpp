@@ -89,7 +89,7 @@ void SSDBMultiClient::addProxyConnection(string ip, int port)
     ox_socket_nodelay(fd);
     SSDBMultiClient* pthis = this;
 
-    DataSocket::PTR ds = new DataSocket(fd);
+    DataSocket::PTR ds = new DataSocket(fd, 32*1024*1024);
 
     ds->setEnterCallback([this](DataSocket::PTR ds){
         mProxyClients.push_back(ds);

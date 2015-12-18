@@ -83,6 +83,32 @@ int     app_kbhit(void)
 #endif
 }
 
+template<typename K, typename V>
+typename std::map<K, V>::mapped_type& map_at(std::map<K, V>& m, K k)
+{
+    auto it = m.find(k);
+    if (it == m.end())
+    {
+        string e = "not found key :" + k;
+        throw std::exception(e.c_str());
+    }
+
+    return it->second;
+}
+
+template<typename K, typename V>
+typename const std::map<K, V>::mapped_type& map_at(const std::map<K, V>& m, K k)
+{
+    auto it = m.find(k);
+    if (it == m.end())
+    {
+        string e = "not found key :" + k;
+        throw std::exception(e.c_str());
+    }
+
+    return it->second;
+}
+
 int main()
 {
     {
@@ -91,29 +117,47 @@ int main()
         int listenPort;         /*代理服务器的监听端口*/
         ox_socket_init();
         std::vector<std::tuple<int, string, int>> backendConfigs;
+
+        try
         {
             struct msvalue_s config(true);
             L = luaL_newstate();
             luaopen_base(L);
             luaL_openlibs(L);
             /*TODO::由启动参数指定配置路径*/
-            lua_tinker::dofile(L, "Config.lua");
-            aux_readluatable_byname(L, "ProxyConfig", &config);
+            if (lua_tinker::dofile(L, "Config.lua"))
+            {
+                aux_readluatable_byname(L, "ProxyConfig", &config);
+            }
+            else
+            {
+                throw std::exception("not found lua file");
+            }
 
             map<string, msvalue_s*>& allconfig = *config._map;
-            listenPort = atoi(allconfig["listenPort"]->_str.c_str());
-            sharding_function = allconfig["sharding_function"]->_str;
+            listenPort = atoi(map_at(allconfig, string("listenPort"))->_str.c_str());
+            sharding_function = map_at(allconfig, string("sharding_function"))->_str;
 
-            map<string, msvalue_s*>& backends = *allconfig["backends"]->_map;
+            map<string, msvalue_s*>& backends = *map_at(allconfig, string("backends"))->_map;
+            
+            cout << "listen port:" << listenPort << endl;
 
             for (auto& v : backends)
             {
                 map<string, msvalue_s*>& oneBackend = *(v.second)->_map;
-                int id = atoi(oneBackend["id"]->_str.c_str());
-                string dbServerIP = oneBackend["ip"]->_str;
-                int port = atoi(oneBackend["port"]->_str.c_str());
+                int id = atoi(map_at(oneBackend, string("id"))->_str.c_str());
+                string dbServerIP = map_at(oneBackend, string("ip"))->_str;
+                int port = atoi(map_at(oneBackend, string("port"))->_str.c_str());
                 backendConfigs.push_back(std::make_tuple(id, dbServerIP, port));
+
+                cout << "backend :" << id << ", ip:" << dbServerIP << ", port:" << port << endl;
             }
+        }
+        catch (const std::exception& e)
+        {
+            cout << "exception:" << e.what() << endl;
+            cin.get();
+            exit(-1);
         }
 
         //WrapLog::PTR gDailyLogger = std::make_shared<WrapLog>();
@@ -144,13 +188,13 @@ int main()
             sock fd = ox_socket_connect(ip.c_str(), port);
             auto bserver = std::make_shared<BackendSession>();
             bserver->setID(id);
-            WrapAddNetSession(server, fd, bserver, -1);
+            WrapAddNetSession(server, fd, bserver, -1, 32*1024*1024);
         }
 
        // gDailyLogger->info("listen proxy port:{}", listenPort);
         /*开启代理服务器监听*/
         listenThread->startListen(listenPort, nullptr, nullptr, [&](int fd){
-            WrapAddNetSession(server, fd, make_shared<ClientSession>(), -1);
+            WrapAddNetSession(server, fd, make_shared<ClientSession>(), -1, 32 * 1024 * 1024);
         });
 
         //gDailyLogger->warn("db proxy server start!");
