@@ -72,9 +72,6 @@
     <ClCompile Include="..\3rdparty\net\WrapTCPService.cpp">
       <Filter>net</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\ssdb\RedisSSDBCovert.cpp">
-      <Filter>dbutils</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rdparty\ssdb\SSDBProtocol.cpp">
       <Filter>dbutils</Filter>
     </ClCompile>
@@ -242,16 +239,7 @@
     <ClInclude Include="..\3rdparty\ssdb\RedisRequest.h">
       <Filter>dbutils</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\RedisSSDBCovert.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\socketlibtypes.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
     <ClInclude Include="..\3rdparty\ssdb\SSDBProtocol.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\platform.h">
       <Filter>dbutils</Filter>
     </ClInclude>
     <ClInclude Include="..\3rdparty\ssdb\RedisParse.h">

@@ -30,6 +30,8 @@ ClientSession::ClientSession()
 
 ClientSession::~ClientSession()
 {
+    cout << "ClientSession::~ClientSession()" << endl;
+
     if (mRedisParse != nullptr)
     {
         parse_tree_del(mRedisParse);
