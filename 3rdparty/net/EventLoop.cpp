@@ -24,7 +24,7 @@ private:
         char temp[1024 * 10];
         while (true)
         {
-            ssize_t n = recv(mFd, temp, 1024 * 10, 0);
+            ssize_t n = read(mFd, temp, 1024 * 10);
             if (n == -1)
             {
                 break;
@@ -128,23 +128,24 @@ void EventLoop::loop(int64_t timeout)
     }
     else
     {
-        BOOL rc = GetQueuedCompletionStatus(mIOCP,
+        /*对GQCS返回失败不予处理，正常流程下只存在于上层主动closesocket才发生此情况，且其会在onRecv中得到处理(最终释放会话资源)*/
+        GetQueuedCompletionStatus(mIOCP,
                                             &mEventEntries[numComplete].dwNumberOfBytesTransferred,
                                             &mEventEntries[numComplete].lpCompletionKey,
                                             &mEventEntries[numComplete].lpOverlapped,
                                             static_cast<DWORD>(timeout));
 
-        if (rc && mEventEntries[numComplete].lpOverlapped != nullptr)
+        if (mEventEntries[numComplete].lpOverlapped != nullptr)
         {
             numComplete++;
             while (numComplete < mEventEntriesNum)
             {
-                rc = GetQueuedCompletionStatus(mIOCP,
+                GetQueuedCompletionStatus(mIOCP,
                                                &mEventEntries[numComplete].dwNumberOfBytesTransferred,
                                                &mEventEntries[numComplete].lpCompletionKey,
                                                &mEventEntries[numComplete].lpOverlapped,
                                                0);
-                if (rc && mEventEntries[numComplete].lpOverlapped != nullptr)
+                if (mEventEntries[numComplete].lpOverlapped != nullptr)
                 {
                     numComplete++;
                 }
@@ -275,7 +276,7 @@ bool EventLoop::linkChannel(int fd, Channel* ptr)
     ev.events = EPOLLET | EPOLLIN | EPOLLRDHUP;
     ev.data.ptr = ptr;
     int ret = epoll_ctl(mEpollFd, EPOLL_CTL_ADD, fd, &ev);
-    return ret != 0;
+    return ret == 0;
 #endif
 }
 
