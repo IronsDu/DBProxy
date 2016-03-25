@@ -186,7 +186,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
         {
             std::shared_ptr<std::string> errorReply = nullptr;
 
-            vector<Bytes> kvs;
+            std::vector<Bytes> kvs;
 
             for (auto& v : mWaitResponses)
             {

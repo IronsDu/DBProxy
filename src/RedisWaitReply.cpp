@@ -6,6 +6,8 @@
 
 #include "RedisWaitReply.h"
 
+using namespace std;
+
 RedisSingleWaitReply::RedisSingleWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }

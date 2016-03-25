@@ -1,0 +1,6 @@
+[submodule "3rdparty/lua_tinker"]
+	path = 3rdparty/lua_tinker
+	url = https://github.com/IronsDu/lua_tinker.git
+[submodule "3rdparty/accumulation-dev"]
+	path = 3rdparty/accumulation-dev
+	url = https://github.com/IronsDu/accumulation-dev.git

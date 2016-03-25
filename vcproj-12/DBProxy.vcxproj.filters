@@ -48,48 +48,6 @@
     <ClCompile Include="..\src\SSDBWaitReply.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\luatinker\lua_tinker.cpp">
-      <Filter>luatinker</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\buffer.c">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\CurrentThread.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\DataSocket.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\EventLoop.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\SocketLibFunction.c">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\TCPService.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\WrapTCPService.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\ssdb\SSDBProtocol.cpp">
-      <Filter>dbutils</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\utils\timer.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\net\NetSession.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\utils\systemlib.c">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\utils\ox_file.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\utils\lua_readtable.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rdparty\luasrc\src\lvm.c">
       <Filter>lua</Filter>
     </ClCompile>
@@ -180,6 +138,48 @@
     <ClCompile Include="..\3rdparty\luasrc\src\lundump.c">
       <Filter>lua</Filter>
     </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\ssdb\SSDBProtocol.cpp">
+      <Filter>dbutils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua_tinker\lua_tinker.cpp">
+      <Filter>luatinker</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\CurrentThread.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\DataSocket.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\EventLoop.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\SocketLibFunction.c">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\TCPService.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\WrapTCPService.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\buffer.c">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\systemlib.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\timer\timer.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\ox_file.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\lua_tinker\lua_readtable.cpp">
+      <Filter>luatinker</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\NetSession.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\Backend.h">
@@ -197,71 +197,62 @@
     <ClInclude Include="..\src\SSDBWaitReply.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\luatinker\lua_tinker.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\RedisRequest.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\SSDBProtocol.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\RedisParse.h">
+      <Filter>dbutils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua_tinker\lua_tinker.h">
       <Filter>luatinker</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\buffer.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\Channel.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\Channel.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\CurrentThread.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\CurrentThread.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\DataSocket.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\DataSocket.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\EventLoop.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\dllconf.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\Platform.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\EventLoop.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\SocketLibFunction.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\platform.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\SocketLibTypes.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\SocketLibFunction.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\TCPService.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\SocketLibTypes.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\WrapTCPService.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\TCPService.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\buffer.h">
       <Filter>net</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\typeids.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\net\WrapTCPService.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\RedisRequest.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\SSDBProtocol.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\ssdb\RedisParse.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\utils\timer.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\systemlib.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\utils\msgqueue.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\timer\timer.h">
       <Filter>utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\net\NetSession.h">
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\ox_file.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\lua_tinker\lua_readtable.h">
+      <Filter>luatinker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\NetSession.h">
       <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\utils\systemlib.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\utils\ox_file.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\utils\lua_readtable.h">
-      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -10,7 +10,6 @@
 
 #include "SocketLibFunction.h"
 #include "ox_file.h"
-#include "WrapLog.h"
 #include "Backend.h"
 #include "Client.h"
 
@@ -160,13 +159,8 @@ int main()
             exit(-1);
         }
 
-        //WrapLog::PTR gDailyLogger = std::make_shared<WrapLog>();
-
-        spdlog::set_level(spdlog::level::info);
-
         ox_dir_create("logs");
         ox_dir_create("logs/DBProxyServer");
-        //gDailyLogger->setFile("", "logs/DBProxyServer/daily");
 
         EventLoop mainLoop;
 
@@ -184,20 +178,16 @@ int main()
             string ip = std::get<1>(v);
             int port = std::get<2>(v);
 
-            //gDailyLogger->info("connec db server id:{}, address: {}:{}", id, ip, port);
             sock fd = ox_socket_connect(ip.c_str(), port);
             auto bserver = std::make_shared<BackendSession>();
             bserver->setID(id);
             WrapAddNetSession(server, fd, bserver, -1, 32*1024*1024);
         }
 
-       // gDailyLogger->info("listen proxy port:{}", listenPort);
         /*开启代理服务器监听*/
         listenThread->startListen(listenPort, nullptr, nullptr, [&](int fd){
             WrapAddNetSession(server, fd, make_shared<ClientSession>(), -1, 32 * 1024 * 1024);
         });
-
-        //gDailyLogger->warn("db proxy server start!");
 
         while (true)
         {

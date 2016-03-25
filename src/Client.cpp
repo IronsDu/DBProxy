@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "RedisParse.h"
 #include "Backend.h"
 #include "SSDBProtocol.h"
@@ -17,6 +19,8 @@ extern "C"
 
 extern bool sharding_key(struct lua_State*, const char* str, int len, int& serverID);
 extern struct lua_State* malloc_luaState();
+
+using namespace std;
 
 ClientSession::ClientSession()
 {
@@ -77,9 +81,9 @@ void ClientSession::onClose()
 }
 
 /*  收到客户端的请求,并解析请求投入到逻辑消息队列    */
-int ClientSession::onMsg(const char* buffer, int len)
+size_t ClientSession::onMsg(const char* buffer, size_t len)
 {
-    int totalLen = 0;
+    size_t totalLen = 0;
 
     const char h = buffer[0];
     if (mRedisParse != nullptr ||

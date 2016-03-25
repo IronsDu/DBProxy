@@ -1,5 +1,6 @@
 #include <fstream>
 #include <memory>
+#include <iostream>
 
 #include "RedisParse.h"
 #include "Client.h"
@@ -8,9 +9,12 @@
 
 #include "Backend.h"
 
+using namespace std;
+
 class ClientSession;
 std::vector<shared_ptr<BackendSession>>    gBackendClients;
 std::mutex gBackendClientsLock;
+
 
 BackendSession::BackendSession()
 {
@@ -81,9 +85,9 @@ void BackendSession::onClose()
 }
 
 /*  收到db server的reply，解析并放入逻辑消息队列   */
-int BackendSession::onMsg(const char* buffer, int len)
+size_t BackendSession::onMsg(const char* buffer, size_t len)
 {
-    int totalLen = 0;
+    size_t totalLen = 0;
 
     const char c = buffer[0];
     if (mRedisParse != nullptr ||

@@ -26,7 +26,7 @@ public:
     RedisProtocolRequest&   getCacheRedisProtocol();
     SSDBProtocolRequest&    getCacheSSDBProtocol();
 private:
-    virtual int     onMsg(const char* buffer, int len) override;
+    virtual size_t  onMsg(const char* buffer, size_t len) override;
     void            onEnter() override;
     void            onClose() override;
 
@@ -56,7 +56,7 @@ private:
     std::deque<std::shared_ptr<BaseWaitReply>>*     mPendingReply;
     bool                                            mNeedAuth;
     bool                                            mIsAuth;
-    string                                          mPassword;
+    std::string                                     mPassword;
     struct lua_State*                               mLua;
 
     RedisProtocolRequest                            mCacheRedisProtocol;
