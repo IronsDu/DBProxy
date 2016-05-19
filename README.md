@@ -6,9 +6,7 @@ dbproxy是一个采用C++11编写的代理服务器，支持[redis](https://gith
 dbproxy支持windwos和linux。
 * windows：打开根目录的DBProxy.sln编译即可。
 * linux：
-  * 1 : 在项目根目录执行 `cd 3rdparty/luasrc/src/` 命令进入lua src目录，然后执行 `make generic` 构建`liblua.so`
-  * 2 : 回到项目根目录执行 `cp 3rdparty/luasrc/src/liblua.so .` 将`liblua.so`拷贝到当前目录。
-  * 3 : 继续在根目录下执行 `make server` 构建 `dbserver` 即可。
+  * 在根目录下执行 `make` 即可构建 `dbserver` 可执行文件
 
 ##配置文件
 dbproxy的配置文件是[Config.lua](https://github.com/IronsDu/DBProxy/blob/master/Config.lua)

@@ -4,20 +4,21 @@ source = src/Backend.cpp\
 		src/DBProxyServer.cpp\
 		src/RedisWaitReply.cpp\
 		src/SSDBWaitReply.cpp\
-		3rdparty/net/buffer.c\
-		3rdparty/net/CurrentThread.cpp\
-		3rdparty/net/DataSocket.cpp\
-		3rdparty/net/EventLoop.cpp\
-		3rdparty/net/NetSession.cpp\
-		3rdparty/net/SocketLibFunction.c\
-		3rdparty/net/TCPService.cpp\
-		3rdparty/net/WrapTCPService.cpp\
-		3rdparty/ssdb/SSDBProtocol.cpp\
-		3rdparty/utils/ox_file.cpp\
-		3rdparty/utils/systemlib.c\
-		3rdparty/utils/timer.cpp\
-		3rdparty/luatinker/lua_tinker.cpp\
-		3rdparty/utils/lua_readtable.cpp\
+		3rdparty/accumulation-dev/src/net/CurrentThread.cpp\
+		3rdparty/accumulation-dev/src/net/DataSocket.cpp\
+		3rdparty/accumulation-dev/src/net/EventLoop.cpp\
+		3rdparty/accumulation-dev/src/net/NetSession.cpp\
+		3rdparty/accumulation-dev/src/net/SocketLibFunction.c\
+		3rdparty/accumulation-dev/src/net/TCPService.cpp\
+		3rdparty/accumulation-dev/src/net/WrapTCPService.cpp\
+		3rdparty/accumulation-dev/src/ssdb/SSDBProtocol.cpp\
+		3rdparty/accumulation-dev/src/utils/buffer.c\
+		3rdparty/accumulation-dev/src/utils/ox_file.cpp\
+		3rdparty/accumulation-dev/src/utils/systemlib.c\
+		3rdparty/accumulation-dev/src/timer/timer.cpp\
+		3rdparty/lua_tinker/lua_tinker.cpp\
+		3rdparty/lua_tinker/lua_readtable.cpp\
 
 server:
-	g++ $(source) -I./3rdparty/luasrc/src -I./3rdparty/luatinker/ -I./3rdparty/ssdb -I./3rdparty/net -I./3rdparty/spdlog/include -I./3rdparty/utils -DPROXY_SINGLE_THREAD -O3 -std=c++11 -L./3rdparty/luasrc/src -llua -lpthread -o dbserver
+	cd ./3rdparty/luasrc/src/;make generic;cp liblua.so ../../../
+	g++ $(source) -I./3rdparty/luasrc/src -I./3rdparty/lua_tinker/ -I./3rdparty/accumulation-dev/src/ssdb -I./3rdparty/accumulation-dev/src/net -I./3rdparty/accumulation-dev/src/timer -I./3rdparty/accumulation-dev/src/utils -DPROXY_SINGLE_THREAD -O3 -std=c++11 -L./3rdparty/luasrc/src -llua -lpthread -lrt -o dbserver

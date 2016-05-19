@@ -178,14 +178,14 @@ int main()
             string ip = std::get<1>(v);
             int port = std::get<2>(v);
 
-            sock fd = ox_socket_connect(ip.c_str(), port);
+            sock fd = ox_socket_connect(false, ip.c_str(), port);
             auto bserver = std::make_shared<BackendSession>();
             bserver->setID(id);
             WrapAddNetSession(server, fd, bserver, -1, 32*1024*1024);
         }
 
         /*开启代理服务器监听*/
-        listenThread->startListen(listenPort, nullptr, nullptr, [&](int fd){
+        listenThread->startListen(false, "0.0.0.0", listenPort, nullptr, nullptr, [&](int fd){
             WrapAddNetSession(server, fd, make_shared<ClientSession>(), -1, 32 * 1024 * 1024);
         });
 
