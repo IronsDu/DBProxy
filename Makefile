@@ -21,4 +21,4 @@ source = src/Backend.cpp\
 
 server:
 	cd ./3rdparty/luasrc/src/;make generic;cp liblua.so ../../../
-	g++ $(source) -I./3rdparty/luasrc/src -I./3rdparty/lua_tinker/ -I./3rdparty/accumulation-dev/src/ssdb -I./3rdparty/accumulation-dev/src/net -I./3rdparty/accumulation-dev/src/timer -I./3rdparty/accumulation-dev/src/utils -DPROXY_SINGLE_THREAD -O3 -std=c++11 -L./3rdparty/luasrc/src -llua -lpthread -lrt -o dbserver
+	g++ $(source) -I./3rdparty/luasrc/src -I./3rdparty/lua_tinker/ -I./3rdparty/accumulation-dev/src/ssdb -I./3rdparty/accumulation-dev/src/net -I./3rdparty/accumulation-dev/src/timer -I./3rdparty/accumulation-dev/src/utils -O3 -std=c++11 -L./ -llua -lpthread -lrt -Wl,-rpath=./ -o dbproxy

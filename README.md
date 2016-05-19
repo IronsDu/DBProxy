@@ -6,7 +6,7 @@ dbproxy是一个采用C++11编写的代理服务器，支持[redis](https://gith
 dbproxy支持windwos和linux。
 * windows：打开根目录的DBProxy.sln编译即可。
 * linux：
-  * 在根目录下执行 `make` 即可构建 `dbserver` 可执行文件
+  * 在根目录下执行 `make` 即可构建 `dbproxy` 可执行文件
 
 ##配置文件
 dbproxy的配置文件是[Config.lua](https://github.com/IronsDu/DBProxy/blob/master/Config.lua)
