@@ -8,6 +8,12 @@
 
 using namespace std;
 
+static void HelpSendError(shared_ptr<ClientSession>& client, const string& error)
+{
+    RedisErrorReply tmp(client, error.c_str());
+    ((BaseWaitReply*)&tmp)->mergeAndSend(client);
+}
+
 RedisSingleWaitReply::RedisSingleWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
 {
 }
@@ -29,11 +35,7 @@ void RedisSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
-        RedisErrorReply tmp(client, mErrorCode->c_str());
-        BaseWaitReply* f = &tmp;
-        f->lockWaitList();
-        f->mergeAndSend(client);
-        f->unLockWaitList();
+        HelpSendError(client, *mErrorCode);
     }
     else if (!mWaitResponses.empty())
     {
@@ -121,11 +123,7 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
-        RedisErrorReply tmp(client, mErrorCode->c_str());
-        BaseWaitReply* f = &tmp;
-        f->lockWaitList();
-        f->mergeAndSend(client);
-        f->unLockWaitList();
+        HelpSendError(client, *mErrorCode);
     }
     else
     {
@@ -173,11 +171,7 @@ void RedisMsetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
-        RedisErrorReply tmp(client, mErrorCode->c_str());
-        BaseWaitReply* f = &tmp;
-        f->lockWaitList();
-        f->mergeAndSend(client);
-        f->unLockWaitList();
+        HelpSendError(client, *mErrorCode);
     }
     else
     {
@@ -218,11 +212,7 @@ void RedisDelWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 {
     if (mErrorCode != nullptr)
     {
-        RedisErrorReply tmp(client, mErrorCode->c_str());
-        BaseWaitReply* f = &tmp;
-        f->lockWaitList();
-        f->mergeAndSend(client);
-        f->unLockWaitList();
+        HelpSendError(client, *mErrorCode);
     }
     else
     {

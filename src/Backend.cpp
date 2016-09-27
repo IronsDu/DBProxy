@@ -178,6 +178,7 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
 
         if (reply != nullptr)
         {
+            /*  TODO::考虑将onBackendReply放入下面的pushAsyncProc回调中处理,那么这个加锁可完全去掉(但必须处理好BackendParseMsg资源!)    */
             reply->lockWaitList();
             reply->onBackendReply(getSocketID(), netParseMsg);
             reply->unLockWaitList();

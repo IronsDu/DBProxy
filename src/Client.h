@@ -4,6 +4,8 @@
 #include <memory>
 #include <deque>
 #include <string>
+#include <vector>
+#include <unordered_map>
 
 #include "NetSession.h"
 
@@ -50,10 +52,13 @@ private:
     bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
 
 private:
+    void            clearShardingKVS();
+
+private:
     parse_tree*                                     mRedisParse;
     std::shared_ptr<std::string>                    mCache;
 
-    std::deque<std::shared_ptr<BaseWaitReply>>*     mPendingReply;
+    std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;
     bool                                            mNeedAuth;
     bool                                            mIsAuth;
     std::string                                     mPassword;
@@ -61,6 +66,8 @@ private:
 
     RedisProtocolRequest                            mCacheRedisProtocol;
     SSDBProtocolRequest                             mCacheSSDBProtocol;
+
+    std::unordered_map<int, std::vector<Bytes>>     mShardingTmpKVS;
 };
 
 #endif

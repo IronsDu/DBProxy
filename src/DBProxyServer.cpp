@@ -196,7 +196,7 @@ int main()
                 break;
             }
 
-            mainLoop.loop(1);
+            mainLoop.loop(50);
         }
 
         listenThread->closeListenThread();
