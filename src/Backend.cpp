@@ -15,7 +15,6 @@ class ClientSession;
 std::vector<shared_ptr<BackendSession>>    gBackendClients;
 std::mutex gBackendClientsLock;
 
-
 BackendSession::BackendSession()
 {
     cout << "BackendSession::BackendSession" << endl;
@@ -60,9 +59,9 @@ void BackendSession::onClose()
         auto wp = mPendingWaitReply.front().lock();
         if (wp != nullptr)
         {
-            wp->lockWaitList();
+            wp->lockReply();
             wp->setError("backend error");
-            wp->unLockWaitList();
+            wp->unLockReply();
             client = wp->getClient();
         }
         mPendingWaitReply.pop();
@@ -96,7 +95,7 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
         /*  redis reply */
         char* parseEndPos = (char*)buffer;
         char* parseStartPos = parseEndPos;
-        string lastPacket;
+
         while (totalLen < len)
         {
             if (mRedisParse == nullptr)
@@ -173,15 +172,15 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
     if (!mPendingWaitReply.empty())
     {
         std::shared_ptr<ClientSession> client = nullptr;
-        std::shared_ptr<BaseWaitReply> reply = mPendingWaitReply.front().lock();
+        auto reply = mPendingWaitReply.front().lock();
         mPendingWaitReply.pop();
 
         if (reply != nullptr)
         {
             /*  TODO::考虑将onBackendReply放入下面的pushAsyncProc回调中处理,那么这个加锁可完全去掉(但必须处理好BackendParseMsg资源!)    */
-            reply->lockWaitList();
+            reply->lockReply();
             reply->onBackendReply(getSocketID(), netParseMsg);
-            reply->unLockWaitList();
+            reply->unLockReply();
             client = reply->getClient();
         }
 
@@ -212,28 +211,28 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
     }
 }
 
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>& r, const char* b, size_t len)
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string>& sharedStr, const char* b, size_t len)
 {
-    std::shared_ptr<string> t = r;
-    if (t == nullptr)
+    auto tmpSharedStr = sharedStr;
+    if (tmpSharedStr == nullptr)
     {
-        t = std::make_shared<std::string>(b, len);
+        tmpSharedStr = std::make_shared<std::string>(b, len);
     }
 
-    w->lockWaitList();
-    w->addWaitServer(getSocketID());
-    w->unLockWaitList();
+    waitReply->lockReply();
+    waitReply->addWaitServer(getSocketID());
+    waitReply->unLockReply();
 
-    std::shared_ptr<BackendSession> pthis = shared_from_this();
-    getEventLoop()->pushAsyncProc([pthis, w, t](){
-        pthis->mPendingWaitReply.push(w);
-        pthis->sendPacket(t);
+    auto sharedThis = shared_from_this();
+    getEventLoop()->pushAsyncProc([sharedThis, waitReply, tmpSharedStr](){
+        sharedThis->mPendingWaitReply.push(waitReply);
+        sharedThis->sendPacket(tmpSharedStr);
     });
 }
 
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<string>&& r, const char* b, size_t len)
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string>&& sharedStr, const char* b, size_t len)
 {
-    forward(w, r, b, len);
+    forward(waitReply, sharedStr, b, len);
 }
 
 void BackendSession::setID(int id)

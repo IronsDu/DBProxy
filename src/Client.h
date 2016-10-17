@@ -27,13 +27,19 @@ public:
 
     RedisProtocolRequest&   getCacheRedisProtocol();
     SSDBProtocolRequest&    getCacheSSDBProtocol();
+
 private:
     virtual size_t  onMsg(const char* buffer, size_t len) override;
     void            onEnter() override;
     void            onClose() override;
 
-    void            processRequest(bool isRedis, SSDBProtocolResponse* ssdbQuery, parse_tree* redisRequest, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
-    
+private:
+    size_t          onRedisRequestMsg(const char* buffer, size_t len);
+    size_t          onSSDBRequestMsg(const char* buffer, size_t len);
+
+    void            processRedisRequest(std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    void            processSSDBRequest(SSDBProtocolResponse* ssdbQuery, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+
 private:
     void            pushSSDBStrListReply(const std::vector < const char* > &strlist);
     void            pushSSDBErrorReply(const char* error);
@@ -55,7 +61,7 @@ private:
     void            clearShardingKVS();
 
 private:
-    parse_tree*                                     mRedisParse;
+    parse_tree*                                     mRedisParse;    /*  TODO::使用智能指针    */
     std::shared_ptr<std::string>                    mCache;
 
     std::deque<std::shared_ptr<BaseWaitReply>>      mPendingReply;

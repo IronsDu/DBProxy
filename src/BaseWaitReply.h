@@ -38,12 +38,12 @@ public:
 
     virtual ~BaseWaitReply();
 
-    void    lockWaitList()
+    void    lockReply()
     {
         mLock.lock();
     }
 
-    void    unLockWaitList()
+    void    unLockReply()
     {
         mLock.unlock();
     }

@@ -19,8 +19,8 @@ public:
     BackendSession();
     ~BackendSession();
 
-    void            forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<std::string>& r, const char* b, size_t len);
-    void            forward(std::shared_ptr<BaseWaitReply>& w, std::shared_ptr<std::string>&& r, const char* b, size_t len);
+    void            forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string>& sharedStr, const char* b, size_t len);
+    void            forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string>&& sharedStr, const char* b, size_t len);
 
     void            setID(int id);
     int             getID() const;
@@ -31,9 +31,10 @@ private:
     void            onClose() override;
 
     void            processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
+
 private:
     parse_tree*                                 mRedisParse;
-    std::shared_ptr<std::string>                     mCache;
+    std::shared_ptr<std::string>                mCache;
 
     std::queue<std::weak_ptr<BaseWaitReply>>    mPendingWaitReply;
     int                                         mID;
