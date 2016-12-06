@@ -9,8 +9,8 @@
 
 #include "NetSession.h"
 
-#include "SSDBProtocol.h"
-#include "RedisRequest.h"
+#include "protocol/SSDBProtocol.h"
+#include "protocol/RedisRequest.h"
 
 struct parse_tree;
 class BaseWaitReply;

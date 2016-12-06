@@ -1,7 +1,7 @@
 #include <assert.h>
 #include "Client.h"
 
-#include "SSDBProtocol.h"
+#include "protocol/SSDBProtocol.h"
 #include "SSDBWaitReply.h"
 
 static const std::string SSDB_OK = "ok";

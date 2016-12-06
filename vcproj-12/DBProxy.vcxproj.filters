@@ -25,7 +25,7 @@
     <Filter Include="utils">
       <UniqueIdentifier>{3a02e791-d3ac-4da8-804c-26f279a71f43}</UniqueIdentifier>
     </Filter>
-    <Filter Include="dbutils">
+    <Filter Include="protocol">
       <UniqueIdentifier>{9232d8b0-e8ee-408c-84f2-d24ad95144a5}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -138,9 +138,6 @@
     <ClCompile Include="..\3rdparty\luasrc\src\lundump.c">
       <Filter>lua</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\ssdb\SSDBProtocol.cpp">
-      <Filter>dbutils</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rdparty\lua_tinker\lua_tinker.cpp">
       <Filter>luatinker</Filter>
     </ClCompile>
@@ -180,6 +177,9 @@
     <ClCompile Include="..\3rdparty\accumulation-dev\src\net\NetSession.cpp">
       <Filter>net</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\protocol\SSDBProtocol.cpp">
+      <Filter>protocol</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\Backend.h">
@@ -196,15 +196,6 @@
     </ClInclude>
     <ClInclude Include="..\src\SSDBWaitReply.h">
       <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\RedisRequest.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\SSDBProtocol.h">
-      <Filter>dbutils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\RedisParse.h">
-      <Filter>dbutils</Filter>
     </ClInclude>
     <ClInclude Include="..\3rdparty\lua_tinker\lua_tinker.h">
       <Filter>luatinker</Filter>
@@ -253,6 +244,15 @@
     </ClInclude>
     <ClInclude Include="..\3rdparty\accumulation-dev\src\net\NetSession.h">
       <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\protocol\RedisRequest.h">
+      <Filter>protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\protocol\SSDBProtocol.h">
+      <Filter>protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\protocol\RedisParse.h">
+      <Filter>protocol</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

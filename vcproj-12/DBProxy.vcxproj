@@ -49,7 +49,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\3rdparty\accumulation-dev\src\net;..\3rdparty\accumulation-dev\src\utils;..\3rdparty\accumulation-dev\src\timer;..\3rdparty\accumulation-dev\src\ssdb;..\3rdparty\luasrc\src;..\3rdparty\lua_tinker;..\3rdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\3rdparty\accumulation-dev\src\net;..\3rdparty\accumulation-dev\src\utils;..\3rdparty\accumulation-dev\src\timer;..\3rdparty\luasrc\src;..\3rdparty\lua_tinker;..\3rdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -64,7 +64,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>..\3rdparty\accumulation-dev\src\net;..\3rdparty\accumulation-dev\src\utils;..\3rdparty\accumulation-dev\src\timer;..\3rdparty\accumulation-dev\src\ssdb;..\3rdparty\luasrc\src;..\3rdparty\lua_tinker;..\3rdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\3rdparty\accumulation-dev\src\net;..\3rdparty\accumulation-dev\src\utils;..\3rdparty\accumulation-dev\src\timer;..\3rdparty\luasrc\src;..\3rdparty\lua_tinker;..\3rdparty\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -84,7 +84,6 @@
     <ClCompile Include="..\3rdparty\accumulation-dev\src\net\SocketLibFunction.c" />
     <ClCompile Include="..\3rdparty\accumulation-dev\src\net\TCPService.cpp" />
     <ClCompile Include="..\3rdparty\accumulation-dev\src\net\WrapTCPService.cpp" />
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\ssdb\SSDBProtocol.cpp" />
     <ClCompile Include="..\3rdparty\accumulation-dev\src\timer\timer.cpp" />
     <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\buffer.c" />
     <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\ox_file.cpp" />
@@ -125,6 +124,7 @@
     <ClCompile Include="..\src\BaseWaitReply.cpp" />
     <ClCompile Include="..\src\Client.cpp" />
     <ClCompile Include="..\src\DBProxyServer.cpp" />
+    <ClCompile Include="..\src\protocol\SSDBProtocol.cpp" />
     <ClCompile Include="..\src\RedisWaitReply.cpp" />
     <ClCompile Include="..\src\SSDBWaitReply.cpp" />
   </ItemGroup>
@@ -139,9 +139,6 @@
     <ClInclude Include="..\3rdparty\accumulation-dev\src\net\SocketLibTypes.h" />
     <ClInclude Include="..\3rdparty\accumulation-dev\src\net\TCPService.h" />
     <ClInclude Include="..\3rdparty\accumulation-dev\src\net\WrapTCPService.h" />
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\RedisParse.h" />
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\RedisRequest.h" />
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\ssdb\SSDBProtocol.h" />
     <ClInclude Include="..\3rdparty\accumulation-dev\src\timer\timer.h" />
     <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\buffer.h" />
     <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\ox_file.h" />
@@ -151,6 +148,9 @@
     <ClInclude Include="..\src\Backend.h" />
     <ClInclude Include="..\src\BaseWaitReply.h" />
     <ClInclude Include="..\src\Client.h" />
+    <ClInclude Include="..\src\protocol\RedisParse.h" />
+    <ClInclude Include="..\src\protocol\RedisRequest.h" />
+    <ClInclude Include="..\src\protocol\SSDBProtocol.h" />
     <ClInclude Include="..\src\RedisWaitReply.h" />
     <ClInclude Include="..\src\SSDBWaitReply.h" />
   </ItemGroup>

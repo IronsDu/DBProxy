@@ -1,8 +1,8 @@
 #include <assert.h>
 
 #include "Client.h"
-#include "RedisRequest.h"
-#include "RedisParse.h"
+#include "protocol/RedisRequest.h"
+#include "protocol/RedisParse.h"
 
 #include "RedisWaitReply.h"
 

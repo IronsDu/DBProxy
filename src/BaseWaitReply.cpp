@@ -1,5 +1,5 @@
-#include "SSDBProtocol.h"
-#include "RedisParse.h"
+#include "protocol/SSDBProtocol.h"
+#include "protocol/RedisParse.h"
 
 #include "BaseWaitReply.h"
 

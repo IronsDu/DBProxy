@@ -2,9 +2,9 @@
 #include <memory>
 #include <iostream>
 
-#include "RedisParse.h"
+#include "protocol/RedisParse.h"
 #include "Client.h"
-#include "SSDBProtocol.h"
+#include "protocol/SSDBProtocol.h"
 #include "SSDBWaitReply.h"
 
 #include "Backend.h"
@@ -145,7 +145,7 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
         int packetLen = 0;
         while ((packetLen = SSDBProtocolResponse::check_ssdb_packet(parseStartPos, leftLen)) > 0)
         {
-            processReply(mRedisParse, mCache, parseStartPos, packetLen);
+            processReply(nullptr, mCache, parseStartPos, packetLen);
 
             totalLen += packetLen;
             leftLen -= packetLen;
@@ -179,6 +179,11 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
         {
             /*  TODO::考虑将onBackendReply放入下面的pushAsyncProc回调中处理,那么这个加锁可完全去掉(但必须处理好BackendParseMsg资源!)    */
             reply->lockReply();
+            if (netParseMsg.redisReply != nullptr && netParseMsg.redisReply->type == REDIS_REPLY_ERROR)
+            {
+                reply->setError(netParseMsg.redisReply->reply->str);
+            }
+            //ssdb会在mergeAndSend时处理错误/失败的response
             reply->onBackendReply(getSocketID(), netParseMsg);
             reply->unLockReply();
             client = reply->getClient();

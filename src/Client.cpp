@@ -1,11 +1,11 @@
 #include <iostream>
 
-#include "RedisParse.h"
+#include "protocol/RedisParse.h"
+#include "protocol/RedisRequest.h"
 #include "Backend.h"
-#include "SSDBProtocol.h"
+#include "protocol/SSDBProtocol.h"
 #include "SSDBWaitReply.h"
 #include "RedisWaitReply.h"
-#include "RedisRequest.h"
 
 extern "C"
 {
