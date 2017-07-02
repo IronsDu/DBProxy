@@ -198,8 +198,8 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
             }
             else
             {
-                eventLoop->pushAsyncProc([client](){
-                    client->processCompletedReply();
+                eventLoop->pushAsyncProc([clientCapture = std::move(client)](){
+                    clientCapture->processCompletedReply();
                 });
             }
         }
@@ -216,28 +216,29 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
     }
 }
 
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string>& sharedStr, const char* b, size_t len)
+void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string> sharedStr, const char* b, size_t len)
 {
-    auto tmpSharedStr = sharedStr;
-    if (tmpSharedStr == nullptr)
+    if (sharedStr == nullptr)
     {
-        tmpSharedStr = std::make_shared<std::string>(b, len);
+        sharedStr = std::make_shared<std::string>(b, len);
     }
 
     waitReply->lockReply();
     waitReply->addWaitServer(getSocketID());
     waitReply->unLockReply();
 
-    auto sharedThis = shared_from_this();
-    getEventLoop()->pushAsyncProc([sharedThis, waitReply, tmpSharedStr](){
-        sharedThis->mPendingWaitReply.push(waitReply);
-        sharedThis->sendPacket(tmpSharedStr);
-    });
-}
-
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string>&& sharedStr, const char* b, size_t len)
-{
-    forward(waitReply, sharedStr, b, len);
+    if (getEventLoop()->isInLoopThread())
+    {
+        mPendingWaitReply.push(waitReply);
+        sendPacket(std::move(sharedStr));
+    }
+    else
+    {
+        getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(sharedStr)](){
+            sharedThis->mPendingWaitReply.push(std::move(waitReply));
+            sharedThis->sendPacket(std::move(sharedStrCaptupre));
+        });
+    }
 }
 
 void BackendSession::setID(int id)

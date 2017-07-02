@@ -25,7 +25,7 @@ void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParse
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.transfer();
+            v.responseBinary = std::move(msg.transfer());
             break;
         }
     }
@@ -39,7 +39,7 @@ void RedisSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
     else if (!mWaitResponses.empty())
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->sendPacket(std::move(mWaitResponses.front().responseBinary));
     }
 }
 
@@ -56,7 +56,7 @@ void RedisStatusReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     std::shared_ptr<std::string> tmp = std::make_shared<string>("+");
     tmp->append(mStatus);
     tmp->append("\r\n");
-    client->sendPacket(tmp);
+    client->sendPacket(std::move(tmp));
 }
 
 RedisErrorReply::RedisErrorReply(std::shared_ptr<ClientSession> client, const char* error) : BaseWaitReply(client), mErrorCode(error)
@@ -72,7 +72,7 @@ void RedisErrorReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     std::shared_ptr<std::string> tmp = std::make_shared<string>("-ERR ");
     tmp->append(mErrorCode);
     tmp->append("\r\n");
-    client->sendPacket(tmp);
+    client->sendPacket(std::move(tmp));
 }
 
 RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail) :
@@ -91,7 +91,7 @@ void RedisWrongTypeReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     tmp->append(" ");
     tmp->append(mWrongDetail);
     tmp->append("\r\n");
-    client->sendPacket(tmp);
+    client->sendPacket(std::move(tmp));
 }
 
 RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
@@ -111,7 +111,7 @@ void RedisMgetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMs
             }
             else
             {
-                v.responseBinary = msg.transfer();
+                v.responseBinary = std::move(msg.transfer());
             }
 
             break;
@@ -129,7 +129,7 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->sendPacket(mWaitResponses.front().responseBinary);
+            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
         }
         else
         {
@@ -200,7 +200,7 @@ void RedisDelWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg
             }
             else
             {
-                v.responseBinary = msg.transfer();
+                v.responseBinary = std::move(msg.transfer());
             }
 
             break;
@@ -218,7 +218,7 @@ void RedisDelWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->sendPacket(mWaitResponses.front().responseBinary);
+            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
         }
         else
         {

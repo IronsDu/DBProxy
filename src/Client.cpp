@@ -115,7 +115,7 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
                 {
                     if (v.compare(0, v.size(), parseStartPos, v.size()) == 0)
                     {
-                        processRedisRequest(mCache, parseStartPos, v.size());
+                        processRedisRequest(std::move(mCache), parseStartPos, v.size());
                         totalLen += v.size();
                         parseStartPos += v.size();
 
@@ -145,12 +145,14 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
         {
             if (mCache == nullptr)
             {
-                processRedisRequest(mCache, parseStartPos, parseEndPos - parseStartPos);
+                processRedisRequest(std::move(mCache), parseStartPos, parseEndPos - parseStartPos);
             }
             else
             {
                 mCache->append(parseStartPos, parseEndPos - parseStartPos);
-                processRedisRequest(mCache, mCache->c_str(), mCache->size());
+                auto tmp = mCache->c_str();
+                auto tmpLen = mCache->size();
+                processRedisRequest(std::move(mCache), tmp, mCache->size());
                 mCache = nullptr;
             }
 
@@ -190,7 +192,7 @@ size_t ClientSession::onSSDBRequestMsg(const char* buffer, size_t len)
         SSDBProtocolResponse* ssdbQuery = new SSDBProtocolResponse;
         ssdbQuery->parse(parseStartPos);
 
-        processSSDBRequest(ssdbQuery, mCache, parseStartPos, packetLen);
+        processSSDBRequest(ssdbQuery, std::move(mCache), parseStartPos, packetLen);
 
         delete ssdbQuery;
         ssdbQuery = nullptr;
@@ -203,7 +205,7 @@ size_t ClientSession::onSSDBRequestMsg(const char* buffer, size_t len)
     return totalLen;
 }
 
-void ClientSession::processRedisRequest(std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
+void ClientSession::processRedisRequest(std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
 {
     /*TODO::重用网络层分包的命令判断，减少此处的字符串比较*/
     if (strncmp(requestBuffer, "PING\r\n", 6) == 0)
@@ -223,19 +225,19 @@ void ClientSession::processRedisRequest(std::shared_ptr<std::string>& requestBin
         }
         else if (strncmp(op, "mget", oplen) == 0)
         {
-            isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(shared_from_this()), mRedisParse, requestBinary, requestBuffer, requestLen, "mget");
+            isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(shared_from_this()), mRedisParse, std::move(requestBinary), requestBuffer, requestLen, "mget");
         }
         else if (strncmp(op, "mset", oplen) == 0)
         {
-            isSuccess = processRedisMset(mRedisParse, requestBinary, requestBuffer, requestLen);
+            isSuccess = processRedisMset(mRedisParse, std::move(requestBinary), requestBuffer, requestLen);
         }
         else if (strncmp(op, "del", oplen) == 0)
         {
-            isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(shared_from_this()), mRedisParse, requestBinary, requestBuffer, requestLen, "del");
+            isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(shared_from_this()), mRedisParse, std::move(requestBinary), requestBuffer, requestLen, "del");
         }
         else
         {
-            isSuccess = processRedisSingleCommand(mRedisParse, requestBinary, requestBuffer, requestLen);
+            isSuccess = processRedisSingleCommand(mRedisParse, std::move(requestBinary), requestBuffer, requestLen);
         }
 
         if (!isSuccess)
@@ -252,7 +254,7 @@ void ClientSession::processRedisRequest(std::shared_ptr<std::string>& requestBin
     }
 }
 
-void ClientSession::processSSDBRequest(SSDBProtocolResponse* ssdbQuery, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
+void ClientSession::processSSDBRequest(SSDBProtocolResponse* ssdbQuery, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = false;
 
@@ -278,19 +280,19 @@ void ClientSession::processSSDBRequest(SSDBProtocolResponse* ssdbQuery, std::sha
                 }
                 else if (strncmp("multi_set", op->buffer, op->len) == 0)
                 {
-                    isSuccess = procSSDBMultiSet(ssdbQuery, requestBinary, requestBuffer, requestLen);
+                    isSuccess = procSSDBMultiSet(ssdbQuery, std::move(requestBinary), requestBuffer, requestLen);
                 }
                 else if (strncmp("multi_get", op->buffer, op->len) == 0)
                 {
-                    isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(shared_from_this()), ssdbQuery, requestBinary, requestBuffer, requestLen, "multi_get");
+                    isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(shared_from_this()), ssdbQuery, std::move(requestBinary), requestBuffer, requestLen, "multi_get");
                 }
                 else if (strncmp("multi_del", op->buffer, op->len) == 0)
                 {
-                    isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(shared_from_this()), ssdbQuery, requestBinary, requestBuffer, requestLen, "multi_del");
+                    isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(shared_from_this()), ssdbQuery, std::move(requestBinary), requestBuffer, requestLen, "multi_del");
                 }
                 else
                 {
-                    isSuccess = procSSDBSingleCommand(ssdbQuery, requestBinary, requestBuffer, requestLen);
+                    isSuccess = procSSDBSingleCommand(ssdbQuery, std::move(requestBinary), requestBuffer, requestLen);
                 }
             }
         }
@@ -362,7 +364,7 @@ bool ClientSession::procSSDBPing(SSDBProtocolResponse*, const char* requestBuffe
     return true;
 }
 
-bool ClientSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = (request->getBuffersLen() - 1) % 2 == 0 && request->getBuffersLen() > 1;
 
@@ -405,7 +407,7 @@ bool ClientSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_
             auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
             if (server != nullptr)
             {
-                server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
             }
         }
         else
@@ -442,7 +444,7 @@ bool ClientSession::procSSDBMultiSet(SSDBProtocolResponse* request, std::shared_
     return isSuccess;
 }
 
-bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> waitReply, SSDBProtocolResponse* request, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
+bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> waitReply, SSDBProtocolResponse* request, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
 {
     bool isSuccess = request->getBuffersLen() > 1;
 
@@ -478,7 +480,7 @@ bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> wa
             auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
             if (server != nullptr)
             {
-                server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
             }
         }
         else
@@ -515,7 +517,7 @@ bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> wa
     return isSuccess;
 }
 
-bool ClientSession::procSSDBSingleCommand(SSDBProtocolResponse* request, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::procSSDBSingleCommand(SSDBProtocolResponse* request, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = false;
     
@@ -528,7 +530,7 @@ bool ClientSession::procSSDBSingleCommand(SSDBProtocolResponse* request, std::sh
         auto server = findBackendByID(serverID);
         if (server != nullptr)
         {
-            server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+            server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
         }
         mPendingReply.push_back(waitReply);
     }
@@ -536,7 +538,7 @@ bool ClientSession::procSSDBSingleCommand(SSDBProtocolResponse* request, std::sh
     return isSuccess;
 }
 
-bool ClientSession::processRedisSingleCommand(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::processRedisSingleCommand(parse_tree* parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = false;
 
@@ -548,7 +550,7 @@ bool ClientSession::processRedisSingleCommand(parse_tree* parse, std::shared_ptr
         {
             isSuccess = true;
             BaseWaitReply::PTR waitReply = std::make_shared<RedisSingleWaitReply>(shared_from_this());
-            server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+            server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
             mPendingReply.push_back(waitReply);
         }
     }
@@ -556,7 +558,7 @@ bool ClientSession::processRedisSingleCommand(parse_tree* parse, std::shared_ptr
     return isSuccess;
 }
 
-bool ClientSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
 {
     bool isSuccess = parse->reply->elements > 1 && (parse->reply->elements-1) % 2 == 0;
 
@@ -600,7 +602,7 @@ bool ClientSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::str
             auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
             if (server != nullptr)
             {
-                server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
             }
         }
         else
@@ -636,7 +638,7 @@ bool ClientSession::processRedisMset(parse_tree* parse, std::shared_ptr<std::str
     return isSuccess;
 }
 
-bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> waitReply, parse_tree* parse, std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
+bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> waitReply, parse_tree* parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
 {
     bool isSuccess = parse->reply->elements > 1;
 
@@ -674,7 +676,7 @@ bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply
             auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
             if (server != nullptr)
             {
-                server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
             }
         }
         else

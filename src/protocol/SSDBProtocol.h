@@ -44,7 +44,7 @@ private:
 };
 
 /*  ssdb协议的请求格式 */
-class SSDBProtocolRequest : public dodo::NonCopyable
+class SSDBProtocolRequest : public brynet::NonCopyable
 {
 public:
     SSDBProtocolRequest();

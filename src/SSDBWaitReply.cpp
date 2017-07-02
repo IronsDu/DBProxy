@@ -58,7 +58,7 @@ void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseM
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.transfer();
+            v.responseBinary = std::move(msg.transfer());
             break;
         }
     }
@@ -72,7 +72,7 @@ void SSDBSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
     else
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->sendPacket(std::move(mWaitResponses.front().responseBinary));
     }
 }
 
@@ -86,7 +86,7 @@ void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendPars
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.transfer();
+            v.responseBinary = std::move(msg.transfer());
 
             if (mWaitResponses.size() != 1)
             {
@@ -109,7 +109,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->sendPacket(mWaitResponses.front().responseBinary);
+            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
         }
         else
         {
@@ -125,14 +125,14 @@ void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
                 }
                 else
                 {
-                    errorReply = v.responseBinary;
+                    errorReply = std::move(v.responseBinary);
                     break;
                 }
             }
 
             if (errorReply != nullptr)
             {
-                client->sendPacket(errorReply);
+                client->sendPacket(std::move(errorReply));
             }
             else
             {
@@ -157,7 +157,7 @@ void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendPars
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = msg.transfer();
+            v.responseBinary = std::move(msg.transfer());
 
             if (mWaitResponses.size() != 1)
             {
@@ -180,7 +180,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     {
         if (mWaitResponses.size() == 1)
         {
-            client->sendPacket(mWaitResponses.front().responseBinary);
+            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
         }
         else
         {
@@ -192,14 +192,14 @@ void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
             {
                 if (!read_bytes(v.ssdbReply, &kvs).ok())
                 {
-                    errorReply = v.responseBinary;
+                    errorReply = std::move(v.responseBinary);
                     break;
                 }
             }
 
             if (errorReply != nullptr)
             {
-                client->sendPacket(errorReply);
+                client->sendPacket(std::move(errorReply));
             }
             else
             {

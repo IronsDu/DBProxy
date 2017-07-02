@@ -141,44 +141,53 @@
     <ClCompile Include="..\3rdparty\lua_tinker\lua_tinker.cpp">
       <Filter>luatinker</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\CurrentThread.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\DataSocket.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\EventLoop.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\SocketLibFunction.c">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\TCPService.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\WrapTCPService.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\buffer.c">
-      <Filter>net</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\systemlib.c">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\timer\timer.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\utils\ox_file.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="..\3rdparty\lua_tinker\lua_readtable.cpp">
       <Filter>luatinker</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rdparty\accumulation-dev\src\net\NetSession.cpp">
-      <Filter>net</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\protocol\SSDBProtocol.cpp">
       <Filter>protocol</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\EventLoop.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\NetSession.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\SocketLibFunction.c">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\TCPService.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\WrapTCPService.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\Connector.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\CurrentThread.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\net\DataSocket.cpp">
+      <Filter>net</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\utils\systemlib.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\timer\Timer.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\utils\fdset.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\utils\array.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\utils\buffer.c">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdparty\brynet\src\utils\ox_file.cpp">
+      <Filter>utils</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -200,50 +209,8 @@
     <ClInclude Include="..\3rdparty\lua_tinker\lua_tinker.h">
       <Filter>luatinker</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\Channel.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\CurrentThread.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\DataSocket.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\EventLoop.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\Platform.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\SocketLibFunction.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\SocketLibTypes.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\TCPService.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\WrapTCPService.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\buffer.h">
-      <Filter>net</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\systemlib.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\timer\timer.h">
-      <Filter>utils</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\utils\ox_file.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="..\3rdparty\lua_tinker\lua_readtable.h">
       <Filter>luatinker</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rdparty\accumulation-dev\src\net\NetSession.h">
-      <Filter>net</Filter>
     </ClInclude>
     <ClInclude Include="..\src\protocol\RedisRequest.h">
       <Filter>protocol</Filter>
@@ -253,6 +220,57 @@
     </ClInclude>
     <ClInclude Include="..\src\protocol\RedisParse.h">
       <Filter>protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\DataSocket.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\EventLoop.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\NetSession.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\Platform.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\SocketLibFunction.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\SocketLibTypes.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\TCPService.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\WrapTCPService.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\Channel.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\Connector.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\net\CurrentThread.h">
+      <Filter>net</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\utils\systemlib.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\timer\Timer.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\utils\fdset.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\utils\array.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\utils\buffer.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdparty\brynet\src\utils\ox_file.h">
+      <Filter>utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

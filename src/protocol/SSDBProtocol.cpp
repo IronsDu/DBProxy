@@ -3,7 +3,7 @@
 
 #include "SocketLibFunction.h"
 #include "buffer.h"
-#include "platform.h"
+#include "Platform.h"
 #include "SSDBProtocol.h"
 
 #if defined PLATFORM_WINDOWS

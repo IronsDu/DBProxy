@@ -19,8 +19,7 @@ public:
     BackendSession();
     ~BackendSession();
 
-    void            forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string>& sharedStr, const char* b, size_t len);
-    void            forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string>&& sharedStr, const char* b, size_t len);
+    void            forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string> sharedStr, const char* b, size_t len);
 
     void            setID(int id);
     int             getID() const;

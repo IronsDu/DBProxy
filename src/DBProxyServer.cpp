@@ -1,4 +1,4 @@
-#include "platform.h"
+#include "Platform.h"
 
 #ifdef PLATFORM_WINDOWS
 #include <stdlib.h>
@@ -165,7 +165,7 @@ int main()
         EventLoop mainLoop;
 
         WrapServer::PTR server = std::make_shared<WrapServer>();
-        ListenThread::PTR listenThread = std::make_shared<ListenThread>();
+        ListenThread::PTR listenThread = ListenThread::Create();
 
         int netWorkerThreadNum = ox_getcpunum();
         /*¿ªÆôÍøÂçÏß³Ì*/
