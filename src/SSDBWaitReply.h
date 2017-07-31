@@ -10,13 +10,13 @@
 class StrListSSDBReply : public BaseWaitReply
 {
 public:
-    StrListSSDBReply(std::shared_ptr<ClientSession> client);
+    StrListSSDBReply(const ClientSession::PTR& client);
     void            pushStr(std::string&& str);
     void            pushStr(const std::string& str);
     void            pushStr(const char* str);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(std::shared_ptr<ClientSession>&);
+    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
+    void            mergeAndSend(const ClientSession::PTR&);
 
 private:
     SSDBProtocolRequest         mStrListResponse;
@@ -25,28 +25,28 @@ private:
 class SSDBSingleWaitReply : public BaseWaitReply
 {
 public:
-    SSDBSingleWaitReply(std::shared_ptr<ClientSession> client);
+    SSDBSingleWaitReply(const ClientSession::PTR& client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(std::shared_ptr<ClientSession>&);
+    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
+    void            mergeAndSend(const ClientSession::PTR&);
 };
 
 class SSDBMultiSetWaitReply : public BaseWaitReply
 {
 public:
-    SSDBMultiSetWaitReply(std::shared_ptr<ClientSession> client);
+    SSDBMultiSetWaitReply(const ClientSession::PTR& client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(std::shared_ptr<ClientSession>&);
+    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
+    void            mergeAndSend(const ClientSession::PTR&);
 };
 
 class SSDBMultiGetWaitReply : public BaseWaitReply
 {
 public:
-    SSDBMultiGetWaitReply(std::shared_ptr<ClientSession> client);
+    SSDBMultiGetWaitReply(const ClientSession::PTR& client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, BackendParseMsg&);
-    void            mergeAndSend(std::shared_ptr<ClientSession>&);
+    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
+    void            mergeAndSend(const ClientSession::PTR&);
 };
 
 typedef SSDBMultiSetWaitReply SSDBMultiDelWaitReply;

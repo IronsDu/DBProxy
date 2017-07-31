@@ -16,12 +16,10 @@ struct BackendParseMsg;
 class BackendSession : public BaseNetSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
-    BackendSession();
+    explicit BackendSession(int id);
     ~BackendSession();
 
-    void            forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string> sharedStr, const char* b, size_t len);
-
-    void            setID(int id);
+    void            forward(const std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string> sharedStr, const char* b, size_t len);
     int             getID() const;
 
 private:
@@ -29,17 +27,16 @@ private:
     void            onEnter() override;
     void            onClose() override;
 
-    void            processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
+    void            processReply(const std::shared_ptr<parse_tree>& redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
 
 private:
-    parse_tree*                                 mRedisParse;
+    std::shared_ptr<parse_tree>                 mRedisParse;
     std::shared_ptr<std::string>                mCache;
 
     std::queue<std::weak_ptr<BaseWaitReply>>    mPendingWaitReply;
-    int                                         mID;
+    const int                                   mID;
 };
 
-extern std::vector<std::shared_ptr<BackendSession>> gBackendClients;
 std::shared_ptr<BackendSession>    findBackendByID(int id);
 
 #endif

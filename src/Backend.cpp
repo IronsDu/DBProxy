@@ -1,6 +1,7 @@
 #include <fstream>
 #include <memory>
 #include <iostream>
+#include <shared_mutex>
 
 #include "protocol/RedisParse.h"
 #include "Client.h"
@@ -13,42 +14,36 @@ using namespace std;
 
 class ClientSession;
 std::vector<shared_ptr<BackendSession>>    gBackendClients;
-std::mutex gBackendClientsLock;
+std::shared_mutex gBackendClientsLock;
 
-BackendSession::BackendSession()
+BackendSession::BackendSession(int id) : mID(id)
 {
     cout << "BackendSession::BackendSession" << endl;
-    mRedisParse = nullptr;
     mCache = nullptr;
 }
 
 BackendSession::~BackendSession()
 {
     cout << "BackendSession::~BackendSession" << endl;
-    if (mRedisParse != nullptr)
-    {
-        parse_tree_del(mRedisParse);
-        mRedisParse = nullptr;
-    }
 }
 
 void BackendSession::onEnter()
 {
-    gBackendClientsLock.lock();
+    std::unique_lock<std::shared_mutex> lock(gBackendClientsLock);
     gBackendClients.push_back(shared_from_this());
-    gBackendClientsLock.unlock();
 }
 
 void BackendSession::onClose()
 {
-    gBackendClientsLock.lock();
-
-    for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
     {
-        if ((*it).get() == this)
+        std::unique_lock<std::shared_mutex> lock(gBackendClientsLock);
+        for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
         {
-            gBackendClients.erase(it);
-            break;
+            if ((*it).get() == this)
+            {
+                gBackendClients.erase(it);
+                break;
+            }
         }
     }
 
@@ -59,31 +54,29 @@ void BackendSession::onClose()
         auto wp = mPendingWaitReply.front().lock();
         if (wp != nullptr)
         {
-            wp->lockReply();
-            wp->setError("backend error");
-            wp->unLockReply();
             client = wp->getClient();
         }
         mPendingWaitReply.pop();
+
         if (client != nullptr)
         {
-            if (client->getEventLoop()->isInLoopThread())
+            auto eventLoop = client->getEventLoop();
+            if (eventLoop->isInLoopThread())
             {
+                wp->setError("backend error");
                 client->processCompletedReply();
             }
             else
             {
-                client->getEventLoop()->pushAsyncProc([client](){
-                    client->processCompletedReply();
+                eventLoop->pushAsyncProc([clientCapture = std::move(client), wpCapture = std::move(wp)](){
+                    wpCapture->setError("backend error");
+                    clientCapture->processCompletedReply();
                 });
             }
         }
     }
-
-    gBackendClientsLock.unlock();
 }
 
-/*  收到db server的reply，解析并放入逻辑消息队列   */
 size_t BackendSession::onMsg(const char* buffer, size_t len)
 {
     size_t totalLen = 0;
@@ -100,10 +93,12 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
         {
             if (mRedisParse == nullptr)
             {
-                mRedisParse = parse_tree_new();
+                mRedisParse = std::shared_ptr<parse_tree>(parse_tree_new(), [](parse_tree* parse) {
+                    parse_tree_del(parse);
+                });
             }
 
-            int parseRet = parse(mRedisParse, &parseEndPos, (char*)buffer+len);
+            int parseRet = parse(mRedisParse.get(), &parseEndPos, (char*)buffer+len);
             totalLen += (parseEndPos - parseStartPos);
 
             if (parseRet == REDIS_OK)
@@ -156,17 +151,17 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
     return totalLen;
 }
 
-void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
+void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
 {
-    BackendParseMsg netParseMsg;
-    netParseMsg.redisReply = redisReply;
+    auto netParseMsg = std::make_shared<BackendParseMsg>();
+    netParseMsg->redisReply = redisReply;
     if (responseBinary != nullptr)
     {
-        netParseMsg.responseMemory = responseBinary;
+        netParseMsg->responseMemory = responseBinary;
     }
     else
     {
-        netParseMsg.responseMemory.reset(new std::string(replyBuffer, replyLen));
+        netParseMsg->responseMemory = std::make_shared<std::string>(replyBuffer, replyLen);
     }
 
     if (!mPendingWaitReply.empty())
@@ -177,15 +172,6 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
 
         if (reply != nullptr)
         {
-            /*  TODO::考虑将onBackendReply放入下面的pushAsyncProc回调中处理,那么这个加锁可完全去掉(但必须处理好BackendParseMsg资源!)    */
-            reply->lockReply();
-            if (netParseMsg.redisReply != nullptr && netParseMsg.redisReply->type == REDIS_REPLY_ERROR)
-            {
-                reply->setError(netParseMsg.redisReply->reply->str);
-            }
-            //ssdb会在mergeAndSend时处理错误/失败的response
-            reply->onBackendReply(getSocketID(), netParseMsg);
-            reply->unLockReply();
             client = reply->getClient();
         }
 
@@ -194,11 +180,26 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
             auto eventLoop = client->getEventLoop();
             if (eventLoop->isInLoopThread())
             {
+                if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
+                {
+                    reply->setError(netParseMsg->redisReply->reply->str);
+                }
+                //ssdb会在mergeAndSend时处理错误/失败的response
+                reply->onBackendReply(getSocketID(), netParseMsg);
                 client->processCompletedReply();
             }
             else
             {
-                eventLoop->pushAsyncProc([clientCapture = std::move(client)](){
+                eventLoop->pushAsyncProc([clientCapture = std::move(client),
+                    netParseMsgCapture = std::move(netParseMsg),
+                    replyCapture = std::move(reply),
+                    socketID = getSocketID()](){
+                    if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
+                    {
+                        replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
+                    }
+                    //ssdb会在mergeAndSend时处理错误/失败的response
+                    replyCapture->onBackendReply(socketID, netParseMsgCapture);
                     clientCapture->processCompletedReply();
                 });
             }
@@ -208,24 +209,16 @@ void BackendSession::processReply(parse_tree* redisReply, std::shared_ptr<std::s
     {
         assert(false);
     }
-
-    if (netParseMsg.redisReply != nullptr)
-    {
-        parse_tree_del(netParseMsg.redisReply);
-        netParseMsg.redisReply = nullptr;
-    }
 }
 
-void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string> sharedStr, const char* b, size_t len)
+void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string> sharedStr, const char* b, size_t len)
 {
     if (sharedStr == nullptr)
     {
         sharedStr = std::make_shared<std::string>(b, len);
     }
 
-    waitReply->lockReply();
     waitReply->addWaitServer(getSocketID());
-    waitReply->unLockReply();
 
     if (getEventLoop()->isInLoopThread())
     {
@@ -241,11 +234,6 @@ void BackendSession::forward(std::shared_ptr<BaseWaitReply>& waitReply, std::sha
     }
 }
 
-void BackendSession::setID(int id)
-{
-    mID = id;
-}
-
 int BackendSession::getID() const
 {
     return mID;
@@ -253,10 +241,10 @@ int BackendSession::getID() const
 
 shared_ptr<BackendSession> findBackendByID(int id)
 {
+    std::shared_lock<std::shared_mutex> lock(gBackendClientsLock);
     shared_ptr<BackendSession> ret = nullptr;
 
-    gBackendClientsLock.lock();
-    for (auto& v : gBackendClients)
+    for (const auto& v : gBackendClients)
     {
         if (v->getID() == id)
         {
@@ -264,7 +252,6 @@ shared_ptr<BackendSession> findBackendByID(int id)
             break;
         }
     }
-    gBackendClientsLock.unlock();
 
     return ret;
 }

@@ -8,34 +8,34 @@
 
 using namespace std;
 
-static void HelpSendError(shared_ptr<ClientSession>& client, const string& error)
+static void HelpSendError(const shared_ptr<ClientSession>& client, const string& error)
 {
-    RedisErrorReply tmp(client, error.c_str());
-    ((BaseWaitReply*)&tmp)->mergeAndSend(client);
+    BaseWaitReply::PTR tmp = std::make_shared<RedisErrorReply>(client, error.c_str());
+    tmp->mergeAndSend(client);
 }
 
-RedisSingleWaitReply::RedisSingleWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+RedisSingleWaitReply::RedisSingleWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
+void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
 {
     assert(mWaitResponses.size() == 1);
     for (auto& v : mWaitResponses)
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = std::move(msg.transfer());
+            v.responseBinary = std::move(msg->responseMemory);
             break;
         }
     }
 }
 
-void RedisSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        HelpSendError(client, *mErrorCode);
+        HelpSendError(client, mErrorCode);
     }
     else if (!mWaitResponses.empty())
     {
@@ -43,15 +43,15 @@ void RedisSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-RedisStatusReply::RedisStatusReply(std::shared_ptr<ClientSession> client, const char* status) : BaseWaitReply(client), mStatus(status)
+RedisStatusReply::RedisStatusReply(const ClientSession::PTR& client, const char* status) : BaseWaitReply(client), mStatus(status)
 {
 }
 
-void RedisStatusReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
+void RedisStatusReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
 {
 }
 
-void RedisStatusReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisStatusReply::mergeAndSend(const ClientSession::PTR& client)
 {
     std::shared_ptr<std::string> tmp = std::make_shared<string>("+");
     tmp->append(mStatus);
@@ -59,15 +59,15 @@ void RedisStatusReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(std::move(tmp));
 }
 
-RedisErrorReply::RedisErrorReply(std::shared_ptr<ClientSession> client, const char* error) : BaseWaitReply(client), mErrorCode(error)
+RedisErrorReply::RedisErrorReply(const ClientSession::PTR& client, const char* error) : BaseWaitReply(client), mErrorCode(error)
 {
 }
 
-void RedisErrorReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
+void RedisErrorReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
 {
 }
 
-void RedisErrorReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisErrorReply::mergeAndSend(const ClientSession::PTR& client)
 {
     std::shared_ptr<std::string> tmp = std::make_shared<string>("-ERR ");
     tmp->append(mErrorCode);
@@ -75,16 +75,16 @@ void RedisErrorReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(std::move(tmp));
 }
 
-RedisWrongTypeReply::RedisWrongTypeReply(std::shared_ptr<ClientSession> client, const char* wrongType, const char* detail) :
+RedisWrongTypeReply::RedisWrongTypeReply(const ClientSession::PTR& client, const char* wrongType, const char* detail) :
     BaseWaitReply(client), mWrongType(wrongType), mWrongDetail(detail)
 {
 }
 
-void RedisWrongTypeReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
+void RedisWrongTypeReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
 {
 }
 
-void RedisWrongTypeReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisWrongTypeReply::mergeAndSend(const ClientSession::PTR& client)
 {
     std::shared_ptr<std::string> tmp = std::make_shared<string>("-WRONGTYPE ");
     tmp->append(mWrongType);
@@ -94,36 +94,37 @@ void RedisWrongTypeReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     client->sendPacket(std::move(tmp));
 }
 
-RedisMgetWaitReply::RedisMgetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+RedisMgetWaitReply::RedisMgetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void RedisMgetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
+void RedisMgetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocketID != dbServerSocketID)
         {
-            if (mWaitResponses.size() != 1)
-            {
-                v.redisReply = msg.redisReply;
-                msg.redisReply = nullptr;
-            }
-            else
-            {
-                v.responseBinary = std::move(msg.transfer());
-            }
-
-            break;
+            continue;
         }
+
+        if (mWaitResponses.size() != 1)
+        {
+            v.redisReply = std::move(msg->redisReply);
+            msg->redisReply = nullptr;
+        }
+        else
+        {
+            v.responseBinary = std::move(msg->responseMemory);
+        }
+        break;
     }
 }
 
-void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisMgetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        HelpSendError(client, *mErrorCode);
+        HelpSendError(client, mErrorCode);
     }
     else
     {
@@ -136,7 +137,7 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
             RedisProtocolRequest& strsResponse = client->getCacheRedisProtocol();
             strsResponse.init();
 
-            for (auto& v : mWaitResponses)
+            for (const auto& v : mWaitResponses)
             {
                 for (size_t i = 0; i < v.redisReply->reply->elements; ++i)
                 {
@@ -150,28 +151,30 @@ void RedisMgetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-RedisMsetWaitReply::RedisMsetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+RedisMsetWaitReply::RedisMsetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void RedisMsetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
+void RedisMsetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocketID != dbServerSocketID)
         {
-            /*  只需要强制设置成功，不需要保存任何reply数据     */
-            v.forceOK = true;
-            break;
+            continue;
         }
+
+        /*  只需要强制设置成功，不需要保存任何reply数据     */
+        v.forceOK = true;
+        break;
     }
 }
 
-void RedisMsetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisMsetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        HelpSendError(client, *mErrorCode);
+        HelpSendError(client, mErrorCode);
     }
     else
     {
@@ -183,36 +186,37 @@ void RedisMsetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-RedisDelWaitReply::RedisDelWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+RedisDelWaitReply::RedisDelWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void RedisDelWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
+void RedisDelWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocketID != dbServerSocketID)
         {
-            if (mWaitResponses.size() != 1)
-            {
-                v.redisReply = msg.redisReply;
-                msg.redisReply = nullptr;
-            }
-            else
-            {
-                v.responseBinary = std::move(msg.transfer());
-            }
-
-            break;
+            continue;
         }
+
+        if (mWaitResponses.size() != 1)
+        {
+            v.redisReply = std::move(msg->redisReply);
+            msg->redisReply = nullptr;
+        }
+        else
+        {
+            v.responseBinary = std::move(msg->responseMemory);
+        }
+        break;
     }
 }
 
-void RedisDelWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void RedisDelWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        HelpSendError(client, *mErrorCode);
+        HelpSendError(client, mErrorCode);
     }
     else
     {
@@ -224,7 +228,7 @@ void RedisDelWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
         {
             int64_t num = 0;
 
-            for (auto& v : mWaitResponses)
+            for (const auto& v : mWaitResponses)
             {
                 num += v.redisReply->reply->integer;
             }

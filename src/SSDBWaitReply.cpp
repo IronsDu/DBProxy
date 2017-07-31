@@ -7,7 +7,7 @@
 static const std::string SSDB_OK = "ok";
 static const std::string SSDB_ERROR = "error";
 
-static void syncSSDBStrList(std::shared_ptr<ClientSession>& client, const std::vector<std::string>& strList)
+static void syncSSDBStrList(const ClientSession::PTR& client, const std::vector<std::string>& strList)
 {
     SSDBProtocolRequest& strsResponse = client->getCacheSSDBProtocol();
     strsResponse.init();
@@ -18,16 +18,15 @@ static void syncSSDBStrList(std::shared_ptr<ClientSession>& client, const std::v
     client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
-StrListSSDBReply::StrListSSDBReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+StrListSSDBReply::StrListSSDBReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg&)
+void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
 {
-
 }
 
-void StrListSSDBReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void StrListSSDBReply::mergeAndSend(const ClientSession::PTR& client)
 {
     mStrListResponse.endl();
     client->sendPacket(mStrListResponse.getResult(), mStrListResponse.getResultLen());
@@ -48,27 +47,27 @@ void StrListSSDBReply::pushStr(const char* str)
     mStrListResponse.appendStr(str);
 }
 
-SSDBSingleWaitReply::SSDBSingleWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+SSDBSingleWaitReply::SSDBSingleWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
+void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
         if (v.dbServerSocketID == dbServerSocketID)
         {
-            v.responseBinary = std::move(msg.transfer());
+            v.responseBinary = std::move(msg->responseMemory);
             break;
         }
     }
 }
 
-void SSDBSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void SSDBSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        syncSSDBStrList(client, { SSDB_ERROR, *mErrorCode });
+        syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
     }
     else
     {
@@ -76,34 +75,35 @@ void SSDBSingleWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
+void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocketID != dbServerSocketID)
         {
-            v.responseBinary = std::move(msg.transfer());
-
-            if (mWaitResponses.size() != 1)
-            {
-                v.ssdbReply = new SSDBProtocolResponse;
-                v.ssdbReply->parse(v.responseBinary->c_str());
-            }
-
-            break;
+            continue;
         }
+
+        v.responseBinary = std::move(msg->responseMemory);
+
+        if (mWaitResponses.size() != 1)
+        {
+            v.ssdbReply = std::make_shared<SSDBProtocolResponse>();
+            v.ssdbReply->parse(v.responseBinary->c_str());
+        }
+        break;
     }
 }
 
-void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        syncSSDBStrList(client, { SSDB_ERROR, *mErrorCode });
+        syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
     }
     else
     {
@@ -119,7 +119,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
             for (auto& v : mWaitResponses)
             {
                 int64_t tmp;
-                if (read_int64(v.ssdbReply, &tmp).ok())
+                if (read_int64(v.ssdbReply.get(), &tmp).ok())
                 {
                     num += tmp;
                 }
@@ -147,34 +147,35 @@ void SSDBMultiSetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
     }
 }
 
-SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(std::shared_ptr<ClientSession> client) : BaseWaitReply(client)
+SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
 {
 }
 
-void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, BackendParseMsg& msg)
+void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocketID != dbServerSocketID)
         {
-            v.responseBinary = std::move(msg.transfer());
-
-            if (mWaitResponses.size() != 1)
-            {
-                v.ssdbReply = new SSDBProtocolResponse;
-                v.ssdbReply->parse(v.responseBinary->c_str());
-            }
-
-            break;
+            continue;
         }
+
+        v.responseBinary = std::move(msg->responseMemory);
+
+        if (mWaitResponses.size() != 1)
+        {
+            v.ssdbReply = std::make_shared<SSDBProtocolResponse>();
+            v.ssdbReply->parse(v.responseBinary->c_str());
+        }
+        break;
     }
 }
 
-void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
+void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
-    if (mErrorCode != nullptr)
+    if (!mErrorCode.empty())
     {
-        syncSSDBStrList(client, { SSDB_ERROR, *mErrorCode });
+        syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
     }
     else
     {
@@ -190,7 +191,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(std::shared_ptr<ClientSession>& client)
 
             for (auto& v : mWaitResponses)
             {
-                if (!read_bytes(v.ssdbReply, &kvs).ok())
+                if (!read_bytes(v.ssdbReply.get(), &kvs).ok())
                 {
                     errorReply = std::move(v.responseBinary);
                     break;

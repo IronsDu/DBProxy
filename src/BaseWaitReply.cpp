@@ -3,35 +3,14 @@
 
 #include "BaseWaitReply.h"
 
-BaseWaitReply::BaseWaitReply(std::shared_ptr<ClientSession>& client) : mClient(client), mErrorCode(nullptr)
+BaseWaitReply::BaseWaitReply(const ClientSession::PTR& client) : mClient(client)
 {}
 
 BaseWaitReply::~BaseWaitReply()
 {
-    for (auto& v : mWaitResponses)
-    {
-        if (v.ssdbReply != nullptr)
-        {
-            delete v.ssdbReply;
-            v.ssdbReply = nullptr;
-        }
-        if (v.redisReply != nullptr)
-        {
-            parse_tree_del(v.redisReply);
-            v.redisReply = nullptr;
-        }
-    }
-
-    mWaitResponses.clear();
-
-    if (mErrorCode != nullptr)
-    {
-        delete mErrorCode;
-        mErrorCode = nullptr;
-    }
 }
 
-std::shared_ptr<ClientSession>& BaseWaitReply::getClient()
+const std::shared_ptr<ClientSession>& BaseWaitReply::getClient() const
 {
     return mClient;
 }
@@ -45,15 +24,12 @@ void BaseWaitReply::addWaitServer(int64_t serverSocketID)
 
 void BaseWaitReply::setError(const char* errorCode)
 {
-    if (mErrorCode == nullptr)
-    {
-        mErrorCode = new std::string(errorCode);
-    }
+    mErrorCode = std::string(errorCode);
 }
 
 bool BaseWaitReply::hasError() const
 {
-    return mErrorCode != nullptr;
+    return !mErrorCode.empty();
 }
 
 bool BaseWaitReply::isAllCompleted() const

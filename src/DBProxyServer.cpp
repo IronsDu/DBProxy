@@ -164,7 +164,7 @@ int main()
 
         EventLoop mainLoop;
 
-        WrapServer::PTR server = std::make_shared<WrapServer>();
+        auto server = std::make_shared<WrapTcpService>();
         ListenThread::PTR listenThread = ListenThread::Create();
 
         int netWorkerThreadNum = ox_getcpunum();
@@ -179,8 +179,7 @@ int main()
             int port = std::get<2>(v);
 
             sock fd = ox_socket_connect(false, ip.c_str(), port);
-            auto bserver = std::make_shared<BackendSession>();
-            bserver->setID(id);
+            auto bserver = std::make_shared<BackendSession>(id);
             WrapAddNetSession(server, fd, bserver, -1, 32*1024*1024);
         }
 

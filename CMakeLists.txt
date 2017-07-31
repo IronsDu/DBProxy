@@ -15,7 +15,7 @@ set(net_src_list
 	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/TCPService.cpp
 	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/WrapTCPService.cpp
 	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/Connector.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/fdset.c
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/fdset.c
 	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/NetSession.cpp
 )
 
