@@ -14,7 +14,7 @@ using namespace std;
 
 class ClientSession;
 std::vector<shared_ptr<BackendSession>>    gBackendClients;
-std::shared_mutex gBackendClientsLock;
+std::mutex gBackendClientsLock;
 
 BackendSession::BackendSession(int id) : mID(id)
 {
@@ -29,14 +29,14 @@ BackendSession::~BackendSession()
 
 void BackendSession::onEnter()
 {
-    std::unique_lock<std::shared_mutex> lock(gBackendClientsLock);
+    std::lock_guard<std::mutex> lock(gBackendClientsLock);
     gBackendClients.push_back(shared_from_this());
 }
 
 void BackendSession::onClose()
 {
     {
-        std::unique_lock<std::shared_mutex> lock(gBackendClientsLock);
+        std::lock_guard<std::mutex> lock(gBackendClientsLock);
         for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
         {
             if ((*it).get() == this)
@@ -60,7 +60,7 @@ void BackendSession::onClose()
 
         if (client != nullptr)
         {
-            auto eventLoop = client->getEventLoop();
+            const auto& eventLoop = client->getEventLoop();
             if (eventLoop->isInLoopThread())
             {
                 wp->setError("backend error");
@@ -177,7 +177,7 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
 
         if (client != nullptr)
         {
-            auto eventLoop = client->getEventLoop();
+            const auto& eventLoop = client->getEventLoop();
             if (eventLoop->isInLoopThread())
             {
                 if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
@@ -190,18 +190,38 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
             }
             else
             {
-                eventLoop->pushAsyncProc([clientCapture = std::move(client),
-                    netParseMsgCapture = std::move(netParseMsg),
-                    replyCapture = std::move(reply),
-                    socketID = getSocketID()](){
-                    if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
+                if (false)
+                {
+                    // 立即处理reply,再投递完成通知到client所在线程去处理
+                    if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
                     {
-                        replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
+                        reply->setError(netParseMsg->redisReply->reply->str);
                     }
                     //ssdb会在mergeAndSend时处理错误/失败的response
-                    replyCapture->onBackendReply(socketID, netParseMsgCapture);
-                    clientCapture->processCompletedReply();
-                });
+                    reply->onBackendReply(getSocketID(), netParseMsg);
+
+                    eventLoop->pushAsyncProc([clientCapture = std::move(client)](){
+                        clientCapture->processCompletedReply();
+                    });
+                }
+                else
+                {
+                    // 投递到client所在线程去处理reply
+                    eventLoop->pushAsyncProc([clientCapture = std::move(client),
+                        netParseMsgCapture = std::move(netParseMsg),
+                        replyCapture = std::move(reply),
+                        socketID = getSocketID()](){
+
+                        if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
+                        {
+                            replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
+                        }
+                        //ssdb会在mergeAndSend时处理错误/失败的response
+                        replyCapture->onBackendReply(socketID, netParseMsgCapture);
+
+                        clientCapture->processCompletedReply();
+                    });
+                }
             }
         }
     }
@@ -241,7 +261,7 @@ int BackendSession::getID() const
 
 shared_ptr<BackendSession> findBackendByID(int id)
 {
-    std::shared_lock<std::shared_mutex> lock(gBackendClientsLock);
+    std::lock_guard<std::mutex> lock(gBackendClientsLock);
     shared_ptr<BackendSession> ret = nullptr;
 
     for (const auto& v : gBackendClients)
