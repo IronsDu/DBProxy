@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-#include "NetSession.h"
+#include <brynet/net/NetSession.h>
 
 class BaseWaitReply;
 struct parse_tree;
@@ -19,7 +19,7 @@ public:
     explicit BackendSession(int id);
     ~BackendSession();
 
-    void            forward(const std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<std::string> sharedStr, const char* b, size_t len);
+    void            forward(const std::shared_ptr<BaseWaitReply>& waitReply, const std::shared_ptr<std::string>& sharedStr, const char* b, size_t len);
     int             getID() const;
 
 private:

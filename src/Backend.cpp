@@ -13,7 +13,7 @@
 using namespace std;
 
 class ClientSession;
-std::vector<shared_ptr<BackendSession>>    gBackendClients;
+static std::vector<shared_ptr<BackendSession>>    gBackendClients;
 std::mutex gBackendClientsLock;
 
 BackendSession::BackendSession(int id) : mID(id)
@@ -58,21 +58,23 @@ void BackendSession::onClose()
         }
         mPendingWaitReply.pop();
 
-        if (client != nullptr)
+        if (client == nullptr)
         {
-            const auto& eventLoop = client->getEventLoop();
-            if (eventLoop->isInLoopThread())
-            {
-                wp->setError("backend error");
-                client->processCompletedReply();
-            }
-            else
-            {
-                eventLoop->pushAsyncProc([clientCapture = std::move(client), wpCapture = std::move(wp)](){
-                    wpCapture->setError("backend error");
-                    clientCapture->processCompletedReply();
-                });
-            }
+            continue;
+        }
+
+        const auto& eventLoop = client->getEventLoop();
+        if (eventLoop->isInLoopThread())
+        {
+            wp->setError("backend error");
+            client->processCompletedReply();
+        }
+        else
+        {
+            eventLoop->pushAsyncProc([clientCapture = std::move(client), wpCapture = std::move(wp)](){
+                wpCapture->setError("backend error");
+                clientCapture->processCompletedReply();
+            });
         }
     }
 }
@@ -231,11 +233,12 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
     }
 }
 
-void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string> sharedStr, const char* b, size_t len)
+void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, const std::shared_ptr<string>& sharedStr, const char* b, size_t len)
 {
+    auto tmp = sharedStr;
     if (sharedStr == nullptr)
     {
-        sharedStr = std::make_shared<std::string>(b, len);
+        tmp = std::make_shared<std::string>(b, len);
     }
 
     waitReply->addWaitServer(getSocketID());
@@ -243,13 +246,13 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, st
     if (getEventLoop()->isInLoopThread())
     {
         mPendingWaitReply.push(waitReply);
-        sendPacket(std::move(sharedStr));
+        sendPacket(tmp);
     }
     else
     {
-        getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(sharedStr)](){
+        getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
             sharedThis->mPendingWaitReply.push(std::move(waitReply));
-            sharedThis->sendPacket(std::move(sharedStrCaptupre));
+            sharedThis->sendPacket(sharedStrCaptupre);
         });
     }
 }

@@ -39,7 +39,7 @@ void RedisSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     else if (!mWaitResponses.empty())
     {
-        client->sendPacket(std::move(mWaitResponses.front().responseBinary));
+        client->sendPacket(mWaitResponses.front().responseBinary);
     }
 }
 
@@ -56,7 +56,7 @@ void RedisStatusReply::mergeAndSend(const ClientSession::PTR& client)
     std::shared_ptr<std::string> tmp = std::make_shared<string>("+");
     tmp->append(mStatus);
     tmp->append("\r\n");
-    client->sendPacket(std::move(tmp));
+    client->sendPacket(tmp);
 }
 
 RedisErrorReply::RedisErrorReply(const ClientSession::PTR& client, const char* error) : BaseWaitReply(client), mErrorCode(error)
@@ -72,7 +72,7 @@ void RedisErrorReply::mergeAndSend(const ClientSession::PTR& client)
     std::shared_ptr<std::string> tmp = std::make_shared<string>("-ERR ");
     tmp->append(mErrorCode);
     tmp->append("\r\n");
-    client->sendPacket(std::move(tmp));
+    client->sendPacket(tmp);
 }
 
 RedisWrongTypeReply::RedisWrongTypeReply(const ClientSession::PTR& client, const char* wrongType, const char* detail) :
@@ -91,7 +91,7 @@ void RedisWrongTypeReply::mergeAndSend(const ClientSession::PTR& client)
     tmp->append(" ");
     tmp->append(mWrongDetail);
     tmp->append("\r\n");
-    client->sendPacket(std::move(tmp));
+    client->sendPacket(tmp);
 }
 
 RedisMgetWaitReply::RedisMgetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -125,30 +125,27 @@ void RedisMgetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     if (!mErrorCode.empty())
     {
         HelpSendError(client, mErrorCode);
+        return;
     }
-    else
+    if (mWaitResponses.size() == 1)
     {
-        if (mWaitResponses.size() == 1)
-        {
-            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
-        }
-        else
-        {
-            RedisProtocolRequest& strsResponse = client->getCacheRedisProtocol();
-            strsResponse.init();
+        client->sendPacket(mWaitResponses.front().responseBinary);
+        return;
+    }
 
-            for (const auto& v : mWaitResponses)
-            {
-                for (size_t i = 0; i < v.redisReply->reply->elements; ++i)
-                {
-                    strsResponse.appendBinary(v.redisReply->reply->element[i]->str, v.redisReply->reply->element[i]->len);
-                }
-            }
+    RedisProtocolRequest& strsResponse = client->getCacheRedisProtocol();
+    strsResponse.init();
 
-            strsResponse.endl();
-            client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
+    for (const auto& v : mWaitResponses)
+    {
+        for (size_t i = 0; i < v.redisReply->reply->elements; ++i)
+        {
+            strsResponse.appendBinary(v.redisReply->reply->element[i]->str, v.redisReply->reply->element[i]->len);
         }
     }
+
+    strsResponse.endl();
+    client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
 RedisMsetWaitReply::RedisMsetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -175,15 +172,14 @@ void RedisMsetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     if (!mErrorCode.empty())
     {
         HelpSendError(client, mErrorCode);
+        return;
     }
-    else
-    {
-        /*  mset总是成功,不需要合并后端服务器的reply   */
-        const char* OK = "+OK\r\n";
-        static int OK_LEN = strlen(OK);
 
-        client->sendPacket(OK, OK_LEN);
-    }
+    /*  mset总是成功,不需要合并后端服务器的reply   */
+    const char* OK = "+OK\r\n";
+    static int OK_LEN = strlen(OK);
+
+    client->sendPacket(OK, OK_LEN);
 }
 
 RedisDelWaitReply::RedisDelWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -217,25 +213,21 @@ void RedisDelWaitReply::mergeAndSend(const ClientSession::PTR& client)
     if (!mErrorCode.empty())
     {
         HelpSendError(client, mErrorCode);
+        return;
     }
-    else
+    if (mWaitResponses.size() == 1)
     {
-        if (mWaitResponses.size() == 1)
-        {
-            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
-        }
-        else
-        {
-            int64_t num = 0;
-
-            for (const auto& v : mWaitResponses)
-            {
-                num += v.redisReply->reply->integer;
-            }
-
-            char tmp[1024];
-            int len = sprintf(tmp, ":%lld\r\n", num);
-            client->sendPacket(tmp, len);
-        }
+        client->sendPacket(mWaitResponses.front().responseBinary);
+        return;
     }
+
+    int64_t num = 0;
+    for (const auto& v : mWaitResponses)
+    {
+        num += v.redisReply->reply->integer;
+    }
+
+    char tmp[1024];
+    int len = sprintf(tmp, ":%lld\r\n", num);
+    client->sendPacket(tmp, len);
 }

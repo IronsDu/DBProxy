@@ -8,38 +8,39 @@ elseif(UNIX)
 endif()
 
 set(net_src_list
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/EventLoop.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/CurrentThread.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/DataSocket.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/SocketLibFunction.c
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/TCPService.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/WrapTCPService.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/Connector.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/fdset.c
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/NetSession.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/EventLoop.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/CurrentThread.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/DataSocket.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/SocketLibFunction.c
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/TCPService.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/WrapTCPService.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/Connector.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/ListenThread.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/fdset.c
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/net/NetSession.cpp
 )
 
 set(timer_src_list
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/timer/Timer.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/timer/Timer.cpp
 )
 
 set(base_src_list
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/array.c
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/buffer.c
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/systemlib.c
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/array.c
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/buffer.c
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/systemlib.c
 )
 
 set(utils_src_list
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/base64.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/md5calc.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/SHA1.cpp
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils/ox_file.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/base64.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/md5calc.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/SHA1.cpp
+	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/ox_file.cpp
 )
 
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net")
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/timer")
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/utils")
-include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/net/http")
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/")
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/")
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/")
+include_directories("${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/")
 
 
 set(lua_tinker_src_list
