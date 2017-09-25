@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <stdint.h>
 
-#include "NonCopyable.h"
+#include <brynet/utils/NonCopyable.h>
 
 #define DEFAULT_SSDBPROTOCOL_LEN 1024
 

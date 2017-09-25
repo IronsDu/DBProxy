@@ -15,6 +15,7 @@ extern "C"
 #include "luaconf.h"
 };
 
+#include "defer.h"
 #include "Client.h"
 
 extern bool sharding_key(struct lua_State*, const char* str, int len, int& serverID);
@@ -88,7 +89,7 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
     {
         if (mRedisParse == nullptr)
         {
-            const static std::vector<string> notDataRequest = { "PING\r\n" };
+            const static std::vector<string> notDataRequest = { "PING\r\n", "COMMAND\r\n" };
 
             bool isWaitDataCompleteRequest = false;
             bool isFindCompleteRequest = false;
@@ -109,7 +110,7 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
                 {
                     if (v.compare(0, v.size(), parseStartPos, v.size()) == 0)
                     {
-                        processRedisRequest(std::move(mCache), parseStartPos, v.size());
+                        processRedisRequest(mCache, parseStartPos, v.size());
                         totalLen += v.size();
                         parseStartPos += v.size();
 
@@ -141,14 +142,14 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
         {
             if (mCache == nullptr)
             {
-                processRedisRequest(std::move(mCache), parseStartPos, parseEndPos - parseStartPos);
+                processRedisRequest(mCache, parseStartPos, parseEndPos - parseStartPos);
             }
             else
             {
                 mCache->append(parseStartPos, parseEndPos - parseStartPos);
                 auto tmp = mCache->c_str();
                 auto tmpLen = mCache->size();
-                processRedisRequest(std::move(mCache), tmp, mCache->size());
+                processRedisRequest(mCache, tmp, mCache->size());
                 mCache = nullptr;
             }
 
@@ -187,7 +188,7 @@ size_t ClientSession::onSSDBRequestMsg(const char* buffer, size_t len)
         auto ssdbQuery = std::make_shared<SSDBProtocolResponse>();
         ssdbQuery->parse(parseStartPos);
 
-        processSSDBRequest(ssdbQuery, std::move(mCache), parseStartPos, packetLen);
+        processSSDBRequest(ssdbQuery, mCache, parseStartPos, packetLen);
 
         totalLen += packetLen;
         leftLen -= packetLen;
@@ -197,95 +198,141 @@ size_t ClientSession::onSSDBRequestMsg(const char* buffer, size_t len)
     return totalLen;
 }
 
-void ClientSession::processRedisRequest(std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
+void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
+    defer (mRedisParse = nullptr);
+
     if (strncmp(requestBuffer, "PING\r\n", 6) == 0)
     {
         pushRedisStatusReply("PONG");
+        return;
     }
-    else
-    {
-        const char* op = mRedisParse->reply->element[0]->str;
-        const size_t oplen = mRedisParse->reply->element[0]->len;
 
-        bool isSuccess = false;
+    const char* op = mRedisParse->reply->element[0]->str;
+    const size_t oplen = mRedisParse->reply->element[0]->len;
 
-        if (strncmp(op, "PING", 4) == 0)
-        {
-            pushRedisStatusReply("PONG");
-        }
-        else if (strncmp(op, "mget", oplen) == 0)
-        {
-            isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(shared_from_this()), mRedisParse, std::move(requestBinary), requestBuffer, requestLen, "mget");
-        }
-        else if (strncmp(op, "mset", oplen) == 0)
-        {
-            isSuccess = processRedisMset(mRedisParse, std::move(requestBinary), requestBuffer, requestLen);
-        }
-        else if (strncmp(op, "del", oplen) == 0)
-        {
-            isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(shared_from_this()), mRedisParse, std::move(requestBinary), requestBuffer, requestLen, "del");
-        }
-        else
-        {
-            isSuccess = processRedisSingleCommand(mRedisParse, std::move(requestBinary), requestBuffer, requestLen);
-        }
-
+    bool isSuccess = false;
+    defer (
         if (!isSuccess)
         {
             /*  模拟一个错误  */
             pushRedisErrorReply("no error for key");
         }
-    }
+    );
 
-    mRedisParse = nullptr;
+    if (strncmp(op, "ping", 4) == 0 || strncmp(op, "PING", 4) == 0)
+    {
+        pushRedisStatusReply("PONG");
+        isSuccess = true;
+    }
+    else if (strncmp(op, "COMMAND", 7) == 0 || strncmp(op, "command", 7) == 0)
+    {
+        // TODO:: test fo redis-cli
+        std::shared_ptr<std::string> tmp = std::make_shared<string>("*6\r\n");
+        tmp->append("$4\r\n");
+        tmp->append("get\r\n");
+        tmp->append(":1\r\n");
+
+        tmp->append("*1\r\n");
+        tmp->append(":1\r\n");
+
+        tmp->append(":1\r\n");
+        tmp->append(":1\r\n");
+        tmp->append(":1\r\n");
+        sendPacket(tmp);
+        return;
+    }
+    else if (strncmp(op, "mget", oplen) == 0)
+    {
+        isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(shared_from_this()),
+            mRedisParse,
+            requestBinary,
+            requestBuffer,
+            requestLen,
+            "mget");
+    }
+    else if (strncmp(op, "mset", oplen) == 0)
+    {
+        isSuccess = processRedisMset(mRedisParse, requestBinary, requestBuffer, requestLen);
+    }
+    else if (strncmp(op, "del", oplen) == 0)
+    {
+        isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(shared_from_this()),
+            mRedisParse,
+            requestBinary,
+            requestBuffer,
+            requestLen,
+            "del");
+    }
+    else
+    {
+        isSuccess = processRedisSingleCommand(mRedisParse, requestBinary, requestBuffer, requestLen);
+    }
 }
 
-void ClientSession::processSSDBRequest(const std::shared_ptr<SSDBProtocolResponse>& ssdbQuery, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
+void ClientSession::processSSDBRequest(const std::shared_ptr<SSDBProtocolResponse>& ssdbQuery, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
     bool isSuccess = false;
 
+    defer (
+        if (!isSuccess)
+        {
+            /*  模拟一个错误  */
+            pushSSDBErrorReply("command not process");
+        }
+    );
+
     Bytes* op = ssdbQuery->getByIndex(0);
-    if (op != nullptr)
+    if (op == nullptr)
     {
-        if (strncmp("auth", op->buffer, op->len) == 0)
-        {
-            isSuccess = procSSDBAuth(ssdbQuery, requestBuffer, requestLen);
-        }
-        else
-        {
-            if (mNeedAuth && !mIsAuth)
-            {
-                pushSSDBStrListReply({ "noauth", "authentication required" });
-                isSuccess = true;
-            }
-            else if (strncmp("ping", op->buffer, op->len) == 0)
-            {
-                isSuccess = procSSDBPing(ssdbQuery, requestBuffer, requestLen);
-            }
-            else if (strncmp("multi_set", op->buffer, op->len) == 0)
-            {
-                isSuccess = procSSDBMultiSet(ssdbQuery, std::move(requestBinary), requestBuffer, requestLen);
-            }
-            else if (strncmp("multi_get", op->buffer, op->len) == 0)
-            {
-                isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(shared_from_this()), ssdbQuery, std::move(requestBinary), requestBuffer, requestLen, "multi_get");
-            }
-            else if (strncmp("multi_del", op->buffer, op->len) == 0)
-            {
-                isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(shared_from_this()), ssdbQuery, std::move(requestBinary), requestBuffer, requestLen, "multi_del");
-            }
-            else
-            {
-                isSuccess = procSSDBSingleCommand(ssdbQuery, std::move(requestBinary), requestBuffer, requestLen);
-            }
-        }
+        return;
     }
 
-    if (!isSuccess)
+    if (strncmp("auth", op->buffer, op->len) == 0)
     {
-        /*  模拟一个错误  */
-        pushSSDBErrorReply("command not process");
+        isSuccess = procSSDBAuth(ssdbQuery, requestBuffer, requestLen);
+        return;
+    }
+    
+    if (mNeedAuth && !mIsAuth)
+    {
+        pushSSDBStrListReply({ "noauth", "authentication required" });
+        isSuccess = true;
+    }
+    else if (strncmp("ping", op->buffer, op->len) == 0)
+    {
+        isSuccess = procSSDBPing(ssdbQuery, requestBuffer, requestLen);
+    }
+    else if (strncmp("multi_set", op->buffer, op->len) == 0)
+    {
+        isSuccess = procSSDBMultiSet(ssdbQuery, requestBinary, requestBuffer, requestLen);
+    }
+    else if (strncmp("multi_get", op->buffer, op->len) == 0)
+    {
+        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiGetWaitReply>(shared_from_this()),
+            ssdbQuery,
+            requestBinary,
+            requestBuffer,
+            requestLen,
+            "multi_get");
+    }
+    else if (strncmp("multi_del", op->buffer, op->len) == 0)
+    {
+        isSuccess = procSSDBCommandOfMultiKeys(std::make_shared<SSDBMultiDelWaitReply>(shared_from_this()),
+            ssdbQuery,
+            requestBinary,
+            requestBuffer,
+            requestLen,
+            "multi_del");
+    }
+    else
+    {
+        isSuccess = procSSDBSingleCommand(ssdbQuery, requestBinary, requestBuffer, requestLen);
     }
 }
 
@@ -307,139 +354,157 @@ void ClientSession::pushSSDBErrorReply(const char* error)
 
 void ClientSession::pushRedisErrorReply(const char* error)
 {
-    auto waitReply = std::make_shared<RedisErrorReply>(shared_from_this(), error);
-    mPendingReply.push_back(std::move(waitReply));
+    mPendingReply.push_back(std::make_shared<RedisErrorReply>(shared_from_this(), error));
     processCompletedReply();
 }
 
 void ClientSession::pushRedisStatusReply(const char* status)
 {
-    auto waitReply = std::make_shared<RedisStatusReply>(shared_from_this(), status);
-    mPendingReply.push_back(std::move(waitReply));
+    mPendingReply.push_back(std::make_shared<RedisStatusReply>(shared_from_this(), status));
     processCompletedReply();
 }
 
-bool ClientSession::procSSDBAuth(const std::shared_ptr<SSDBProtocolResponse>& request, const char* requestBuffer, size_t requestLen)
+bool ClientSession::procSSDBAuth(const std::shared_ptr<SSDBProtocolResponse>& request, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
-    if (request->getBuffersLen() == 2)
-    {
-        Bytes* p = request->getByIndex(1);
-        if (!mNeedAuth || strncmp(p->buffer, mPassword.c_str(), p->len) == 0)
-        {
-            mIsAuth = true;
-            pushSSDBStrListReply({ "ok" });
-        }
-        else
-        {
-            pushSSDBErrorReply("invalid password");
-        }
-    }
-    else
+    if (request->getBuffersLen() != 2)
     {
         pushSSDBStrListReply({ "client_error" });
+        return true;
     }
+
+    Bytes* p = request->getByIndex(1);
+    if (mNeedAuth && strncmp(p->buffer, mPassword.c_str(), p->len) != 0)
+    {
+        pushSSDBErrorReply("invalid password");
+        return true;
+    }
+
+    mIsAuth = true;
+    pushSSDBStrListReply({ "ok" });
 
     return true;
 }
 
-bool ClientSession::procSSDBPing(const std::shared_ptr<SSDBProtocolResponse>&, const char* requestBuffer, size_t requestLen)
+bool ClientSession::procSSDBPing(const std::shared_ptr<SSDBProtocolResponse>&, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
     pushSSDBStrListReply({ "ok" });
     return true;
 }
 
-bool ClientSession::procSSDBMultiSet(const std::shared_ptr<SSDBProtocolResponse>& request, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::procSSDBMultiSet(const std::shared_ptr<SSDBProtocolResponse>& request, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
     bool isSuccess = (request->getBuffersLen() - 1) % 2 == 0 && request->getBuffersLen() > 1;
-
+    if (!isSuccess)
+    {
+        return isSuccess;
+    }
+    
     BaseWaitReply::PTR waitReply = std::make_shared<SSDBMultiSetWaitReply>(shared_from_this());
 
-    if (isSuccess)
-    {
-        for (size_t i = 1; i < request->getBuffersLen(); i += 2)
-        {
-            Bytes* b = request->getByIndex(i);
-            int serverID;
-            if (!sharding_key(mLua, b->buffer, b->len, serverID))
-            {
-                isSuccess = false;
-                break;
-            }
-
-            auto it = mShardingTmpKVS.find(serverID);
-            if (it == mShardingTmpKVS.end())
-            {
-                std::vector<Bytes> tmp;
-                tmp.push_back(*b);
-                tmp.push_back(*(request->getByIndex(i + 1)));
-                mShardingTmpKVS[serverID] = std::move(tmp);
-            }
-            else
-            {
-                (*it).second.push_back(*b);
-                (*it).second.push_back(*(request->getByIndex(i + 1)));
-            }
-        }
-    }
-
-    if (isSuccess)
-    {
-        if (mShardingTmpKVS.size() == 1)
-        {
-            auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
-            if (server != nullptr)
-            {
-                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
-            }
-            else
-            {
-                isSuccess = false;
-            }
-        }
-        else
-        {
-            SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
-
-            for (auto& v : mShardingTmpKVS)
-            {
-                if (v.second.empty())
-                {
-                    continue;
-                }
-
-                request2Backend.init();
-                auto server = findBackendByID(v.first);
-                if (server == nullptr)
-                {
-                    isSuccess = false;
-                    break;
-                }
-
-                request2Backend.appendStr("multi_set");
-                for (auto& k : v.second)
-                {
-                    request2Backend.appendStr(k.buffer, k.len);
-                }
-                request2Backend.endl();
-
-                server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
-            }
-        }
-
+    defer (
+        clearShardingKVS();
         if (isSuccess)
         {
             mPendingReply.push_back(waitReply);
         }
+    );
+
+    for (size_t i = 1; i < request->getBuffersLen(); i += 2)
+    {
+        const Bytes* b = request->getByIndex(i);
+        int serverID;
+        if (!sharding_key(mLua, b->buffer, b->len, serverID))
+        {
+            return isSuccess = false;
+        }
+
+        auto it = mShardingTmpKVS.find(serverID);
+        if (it == mShardingTmpKVS.end())
+        {
+            std::vector<Bytes> tmp;
+            tmp.push_back(*b);
+            tmp.push_back(*(request->getByIndex(i + 1)));
+            mShardingTmpKVS[serverID] = std::move(tmp);
+        }
+        else
+        {
+            (*it).second.push_back(*b);
+            (*it).second.push_back(*(request->getByIndex(i + 1)));
+        }
     }
 
-    clearShardingKVS();
+    if (mShardingTmpKVS.size() == 1)
+    {
+        auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
+        if (server == nullptr)
+        {
+            return isSuccess = false;
+        }
+
+        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+    }
+    else
+    {
+        SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
+
+        for (auto& v : mShardingTmpKVS)
+        {
+            if (v.second.empty())
+            {
+                continue;
+            }
+
+            request2Backend.init();
+            auto server = findBackendByID(v.first);
+            if (server == nullptr)
+            {
+                return isSuccess = false;
+            }
+
+            request2Backend.appendStr("multi_set");
+            for (auto& k : v.second)
+            {
+                request2Backend.appendStr(k.buffer, k.len);
+            }
+            request2Backend.endl();
+
+            server->forward(waitReply,
+                nullptr,
+                request2Backend.getResult(),
+                request2Backend.getResultLen());
+        }
+    }
 
     return isSuccess;
 }
 
-bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> waitReply, const std::shared_ptr<SSDBProtocolResponse>& request, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
+bool ClientSession::procSSDBCommandOfMultiKeys(const std::shared_ptr<BaseWaitReply>& waitReply, 
+    const std::shared_ptr<SSDBProtocolResponse>& request, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen, 
+    const char* command)
 {
     bool isSuccess = request->getBuffersLen() > 1;
+    if (!isSuccess)
+    {
+        return false;
+    }
+
+    defer (
+        clearShardingKVS();
+        if (isSuccess)
+        {
+            mPendingReply.push_back(waitReply);
+        }
+    );
 
     for (size_t i = 1; i < request->getBuffersLen(); ++i)
     {
@@ -447,8 +512,7 @@ bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> wa
         int serverID;
         if (!sharding_key(mLua, b->buffer, b->len, serverID))
         {
-            isSuccess = false;
-            break;
+            return isSuccess = false;
         }
 
         auto it = mShardingTmpKVS.find(serverID);
@@ -464,105 +528,114 @@ bool ClientSession::procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> wa
         }
     }
 
-    if (isSuccess)
+    if (mShardingTmpKVS.size() == 1)
     {
-        if (mShardingTmpKVS.size() == 1)
+        auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
+        if (server == nullptr)
         {
-            auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
-            if (server != nullptr)
-            {
-                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
-            }
-            else
-            {
-                isSuccess = false;
-            }
-        }
-        else
-        {
-            SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
-
-            for (auto& v : mShardingTmpKVS)
-            {
-               if (v.second.empty())
-               {
-                   continue;
-               }
-
-               request2Backend.init();
-               auto server = findBackendByID(v.first);
-               if (server == nullptr)
-               {
-                   isSuccess = false;
-                   break;
-               }
-
-               request2Backend.appendStr(command);
-               for (auto& k : v.second)
-               {
-                   request2Backend.appendStr(k.buffer, k.len);
-               }
-               request2Backend.endl();
-
-               server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
-            }
+            return isSuccess = false;
         }
 
-        if (isSuccess)
+        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+    }
+    else
+    {
+        SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
+
+        for (auto& v : mShardingTmpKVS)
         {
-            mPendingReply.push_back(waitReply);
+            if (v.second.empty())
+            {
+                continue;
+            }
+
+            request2Backend.init();
+            auto server = findBackendByID(v.first);
+            if (server == nullptr)
+            {
+                return isSuccess = false;
+            }
+
+            request2Backend.appendStr(command);
+            for (auto& k : v.second)
+            {
+                request2Backend.appendStr(k.buffer, k.len);
+            }
+            request2Backend.endl();
+
+            server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
         }
     }
 
-    clearShardingKVS();
-
-    return isSuccess;
+    return true;
 }
 
-bool ClientSession::procSSDBSingleCommand(const std::shared_ptr<SSDBProtocolResponse>& request, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::procSSDBSingleCommand(const std::shared_ptr<SSDBProtocolResponse>& request, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, size_t requestLen)
 {
-    bool isSuccess = false;
-    
     Bytes* b = request->getByIndex(1);
     int serverID;
-    if (sharding_key(mLua, b->buffer, b->len, serverID))
+    if (!sharding_key(mLua, b->buffer, b->len, serverID))
     {
-        auto server = findBackendByID(serverID);
-        if (server != nullptr)
-        {
-            BaseWaitReply::PTR waitReply = std::make_shared<SSDBSingleWaitReply>(shared_from_this());
-            server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
-            mPendingReply.push_back(waitReply);
-            isSuccess = true;
-        }
+        return false;
     }
 
-    return isSuccess;
+    auto server = findBackendByID(serverID);
+    if (server == nullptr)
+    {
+        return false;
+    }
+
+    BaseWaitReply::PTR waitReply = std::make_shared<SSDBSingleWaitReply>(shared_from_this());
+    server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+    mPendingReply.push_back(waitReply);
+    
+    return true;
 }
 
-bool ClientSession::processRedisSingleCommand(const std::shared_ptr<parse_tree>& parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::processRedisSingleCommand(const std::shared_ptr<parse_tree>& parse, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
-    bool isSuccess = false;
+    if (parse->reply->elements < 1)
+    {
+        return false;
+    }
 
     int serverID;
-    if (sharding_key(mLua, parse->reply->element[1]->str, parse->reply->element[1]->len, serverID))
+    if (!sharding_key(mLua, parse->reply->element[1]->str, parse->reply->element[1]->len, serverID))
     {
-        auto server = findBackendByID(serverID);
-        if (server != nullptr)
-        {
-            isSuccess = true;
-            BaseWaitReply::PTR waitReply = std::make_shared<RedisSingleWaitReply>(shared_from_this());
-            server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
-            mPendingReply.push_back(waitReply);
-        }
+        return false;
     }
 
-    return isSuccess;
+    auto server = findBackendByID(serverID);
+    if (server == nullptr)
+    {
+        return false;
+    }
+
+    BaseWaitReply::PTR waitReply = std::make_shared<RedisSingleWaitReply>(shared_from_this());
+    server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+    mPendingReply.push_back(waitReply);
+
+    return true;
 }
 
-bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen)
+bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen)
 {
-    bool isSuccess = parse->reply->elements > 1 && (parse->reply->elements-1) % 2 == 0;
+    if (parse->reply->elements <= 1 || (parse->reply->elements - 1) % 2 != 0)
+    {
+        return false;
+    }
+
+    defer (
+        clearShardingKVS();
+    );
 
     for (size_t i = 1; i < parse->reply->elements; i+=2)
     {
@@ -573,89 +646,94 @@ bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse, s
         const char* value = parse->reply->element[i+1]->str;
         int valueLen = parse->reply->element[i+1]->len;
 
-        if (sharding_key(mLua, key, keyLen, serverID))
+        if (!sharding_key(mLua, key, keyLen, serverID))
         {
-            auto it = mShardingTmpKVS.find(serverID);
-            if (it == mShardingTmpKVS.end())
-            {
-                std::vector<Bytes> tmp;
-                tmp.push_back({key, keyLen});
-                tmp.push_back({value,valueLen});
-                mShardingTmpKVS[serverID] = std::move(tmp);
-            }
-            else
-            {
-                (*it).second.push_back({key, keyLen});
-                (*it).second.push_back({value, valueLen});
-            }
+            return false;
+        }
+
+        auto it = mShardingTmpKVS.find(serverID);
+        if (it == mShardingTmpKVS.end())
+        {
+            std::vector<Bytes> tmp;
+            tmp.push_back({ key, keyLen });
+            tmp.push_back({ value, valueLen });
+            mShardingTmpKVS[serverID] = std::move(tmp);
         }
         else
         {
-            isSuccess = false;
-            break;
+            (*it).second.push_back({ key, keyLen });
+            (*it).second.push_back({ value, valueLen });
         }
     }
 
-    if (isSuccess)
-    {
-        BaseWaitReply::PTR waitReply = std::make_shared<RedisMsetWaitReply>(shared_from_this());
-        if (mShardingTmpKVS.size() == 1)
-        {
-            auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
-            if (server != nullptr)
-            {
-                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
-            }
-            else
-            {
-                isSuccess = false;
-            }
-        }
-        else
-        {
-            RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
+    BaseWaitReply::PTR waitReply = std::make_shared<RedisMsetWaitReply>(shared_from_this());
+    auto isSuccess = true;
 
-            for (auto& v : mShardingTmpKVS)
-            {
-                if (v.second.empty())
-                {
-                    continue;
-                }
-
-                auto server = findBackendByID(v.first);
-                if (server == nullptr)
-                {
-                    isSuccess = false;
-                    break;
-                }
-
-                request2Backend.init();
-                request2Backend.writev("mset");
-                for (auto& k : v.second)
-                {
-                    request2Backend.appendBinary(k.buffer, k.len);
-                }
-                request2Backend.endl();
-
-                
-                server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
-            }
-        }
-
+    defer (
         if (isSuccess)
         {
             mPendingReply.push_back(waitReply);
         }
+    );
+
+    if (mShardingTmpKVS.size() == 1)
+    {
+        auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
+        if (server == nullptr)
+        {
+            return isSuccess = false;
+        }
+
+        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+    }
+    else
+    {
+        RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
+
+        for (auto& v : mShardingTmpKVS)
+        {
+            if (v.second.empty())
+            {
+                continue;
+            }
+
+            auto server = findBackendByID(v.first);
+            if (server == nullptr)
+            {
+                return isSuccess = false;
+            }
+
+            request2Backend.init();
+            request2Backend.writev("mset");
+            for (auto& k : v.second)
+            {
+                request2Backend.appendBinary(k.buffer, k.len);
+            }
+            request2Backend.endl();
+
+
+            server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
+        }
     }
 
-    clearShardingKVS();
-
-    return isSuccess;
+    return true;
 }
 
-bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> waitReply, const std::shared_ptr<parse_tree>& parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen, const char* command)
+bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWaitReply>& waitReply, 
+    const std::shared_ptr<parse_tree>& parse, 
+    const std::shared_ptr<std::string>& requestBinary, 
+    const char* requestBuffer, 
+    size_t requestLen, 
+    const char* command)
 {
-    bool isSuccess = parse->reply->elements > 1;
+    if (parse->reply->elements <= 1)
+    {
+        return false;
+    }
+
+    defer (
+        clearShardingKVS();
+    );
 
     for (size_t i = 1; i < parse->reply->elements; ++i)
     {
@@ -663,80 +741,72 @@ bool ClientSession::processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply
         const char* key = parse->reply->element[i]->str;
         int keyLen = parse->reply->element[i]->len;
 
-        if (sharding_key(mLua, key, keyLen, serverID))
+        if (!sharding_key(mLua, key, keyLen, serverID))
         {
-            auto it = mShardingTmpKVS.find(serverID);
-            if (it == mShardingTmpKVS.end())
-            {
-                std::vector<Bytes> tmp;
-                tmp.push_back({key, keyLen});
-                mShardingTmpKVS[serverID] = std::move(tmp);
-            }
-            else
-            {
-                (*it).second.push_back({key, keyLen});
-            }
+            return false;
+        }
+
+        auto it = mShardingTmpKVS.find(serverID);
+        if (it == mShardingTmpKVS.end())
+        {
+            std::vector<Bytes> tmp;
+            tmp.push_back({ key, keyLen });
+            mShardingTmpKVS[serverID] = std::move(tmp);
         }
         else
         {
-            isSuccess = false;
-            break;
+            (*it).second.push_back({ key, keyLen });
         }
     }
 
-    if (isSuccess)
-    {
-        if (mShardingTmpKVS.size() == 1)
-        {
-            auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
-            if (server != nullptr)
-            {
-                server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
-            }
-            else
-            {
-                isSuccess = false;
-            }
-        }
-        else
-        {
-            RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
-
-            for (const auto& v : mShardingTmpKVS)
-            {
-                if (v.second.empty())
-                {
-                    continue;
-                }
-
-                auto server = findBackendByID(v.first);
-                if (server == nullptr)
-                {
-                    isSuccess = false;
-                    break;
-                }
-
-                request2Backend.init();
-                request2Backend.appendBinary(command, strlen(command));
-                for (auto& k : v.second)
-                {
-                    request2Backend.appendBinary(k.buffer, k.len);
-                }
-                request2Backend.endl();
-
-                server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
-            }
-        }
-
+    auto isSuccess = true;
+    defer (
         if (isSuccess)
         {
             mPendingReply.push_back(waitReply);
+        };
+    );
+
+    if (mShardingTmpKVS.size() == 1)
+    {
+        auto server = findBackendByID((*mShardingTmpKVS.begin()).first);
+        if (server == nullptr)
+        {
+            return isSuccess = false;
         }
+
+        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
     }
+    else
+    {
+        RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
 
-    clearShardingKVS();
+        for (const auto& v : mShardingTmpKVS)
+        {
+            if (v.second.empty())
+            {
+                continue;
+            }
 
-    return isSuccess;
+            auto server = findBackendByID(v.first);
+            if (server == nullptr)
+            {
+                return isSuccess = false;
+            }
+
+            request2Backend.init();
+            request2Backend.appendBinary(command, strlen(command));
+            for (auto& k : v.second)
+            {
+                request2Backend.appendBinary(k.buffer, k.len);
+            }
+            request2Backend.endl();
+
+            server->forward(waitReply, nullptr, request2Backend.getResult(), request2Backend.getResultLen());
+        }
+    }    
+
+    return true;
 }
 
 void ClientSession::clearShardingKVS()

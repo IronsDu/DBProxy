@@ -71,7 +71,7 @@ void SSDBSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     else
     {
-        client->sendPacket(std::move(mWaitResponses.front().responseBinary));
+        client->sendPacket(mWaitResponses.front().responseBinary);
     }
 }
 
@@ -104,46 +104,43 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     if (!mErrorCode.empty())
     {
         syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
+        return;
     }
-    else
+    if (mWaitResponses.size() == 1)
     {
-        if (mWaitResponses.size() == 1)
+        client->sendPacket(mWaitResponses.front().responseBinary);
+        return;
+    }
+
+    std::shared_ptr<std::string> errorReply = nullptr;
+    int64_t num = 0;
+
+    for (auto& v : mWaitResponses)
+    {
+        int64_t tmp;
+        if (read_int64(v.ssdbReply.get(), &tmp).ok())
         {
-            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
+            num += tmp;
         }
         else
         {
-            std::shared_ptr<std::string> errorReply = nullptr;
-            int64_t num = 0;
-
-            for (auto& v : mWaitResponses)
-            {
-                int64_t tmp;
-                if (read_int64(v.ssdbReply.get(), &tmp).ok())
-                {
-                    num += tmp;
-                }
-                else
-                {
-                    errorReply = std::move(v.responseBinary);
-                    break;
-                }
-            }
-
-            if (errorReply != nullptr)
-            {
-                client->sendPacket(std::move(errorReply));
-            }
-            else
-            {
-                SSDBProtocolRequest& response = client->getCacheSSDBProtocol();
-                response.init();
-
-                response.writev(SSDB_OK, num);
-                response.endl();
-                client->sendPacket(response.getResult(), response.getResultLen());
-            }
+            errorReply = std::move(v.responseBinary);
+            break;
         }
+    }
+
+    if (errorReply != nullptr)
+    {
+        client->sendPacket(errorReply);
+    }
+    else
+    {
+        SSDBProtocolRequest& response = client->getCacheSSDBProtocol();
+        response.init();
+
+        response.writev(SSDB_OK, num);
+        response.endl();
+        client->sendPacket(response.getResult(), response.getResultLen());
     }
 }
 
@@ -176,46 +173,42 @@ void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     if (!mErrorCode.empty())
     {
         syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
+        return;
+    }
+    if (mWaitResponses.size() == 1)
+    {
+        client->sendPacket(mWaitResponses.front().responseBinary);
+        return;
+    }
+
+    std::shared_ptr<std::string> errorReply = nullptr;
+    std::vector<Bytes> kvs;
+
+    for (auto& v : mWaitResponses)
+    {
+        if (!read_bytes(v.ssdbReply.get(), &kvs).ok())
+        {
+            errorReply = std::move(v.responseBinary);
+            break;
+        }
+    }
+
+    if (errorReply != nullptr)
+    {
+        client->sendPacket(std::move(errorReply));
     }
     else
     {
-        if (mWaitResponses.size() == 1)
+        SSDBProtocolRequest& strsResponse = client->getCacheSSDBProtocol();
+        strsResponse.init();
+
+        strsResponse.writev(SSDB_OK);
+        for (auto& v : kvs)
         {
-            client->sendPacket(std::move(mWaitResponses.front().responseBinary));
+            strsResponse.appendStr(v.buffer, v.len);
         }
-        else
-        {
-            std::shared_ptr<std::string> errorReply = nullptr;
 
-            std::vector<Bytes> kvs;
-
-            for (auto& v : mWaitResponses)
-            {
-                if (!read_bytes(v.ssdbReply.get(), &kvs).ok())
-                {
-                    errorReply = std::move(v.responseBinary);
-                    break;
-                }
-            }
-
-            if (errorReply != nullptr)
-            {
-                client->sendPacket(std::move(errorReply));
-            }
-            else
-            {
-                SSDBProtocolRequest& strsResponse = client->getCacheSSDBProtocol();
-                strsResponse.init();
-
-                strsResponse.writev(SSDB_OK);
-                for (auto& v : kvs)
-                {
-                    strsResponse.appendStr(v.buffer, v.len);
-                }
-                
-                strsResponse.endl();
-                client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
-            }
-        }
+        strsResponse.endl();
+        client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
     }
 }

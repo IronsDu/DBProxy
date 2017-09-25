@@ -7,7 +7,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include "NetSession.h"
+#include <brynet/net/NetSession.h>
 
 #include "protocol/SSDBProtocol.h"
 #include "protocol/RedisRequest.h"
@@ -40,8 +40,8 @@ private:
     size_t          onRedisRequestMsg(const char* buffer, size_t len);
     size_t          onSSDBRequestMsg(const char* buffer, size_t len);
 
-    void            processRedisRequest(std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen);
-    void            processSSDBRequest(const std::shared_ptr<SSDBProtocolResponse>& ssdbQuery, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen);
+    void            processRedisRequest(const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    void            processSSDBRequest(const std::shared_ptr<SSDBProtocolResponse>& ssdbQuery, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
 
 private:
     void            pushSSDBStrListReply(const std::vector < const char* > &strlist);
@@ -52,13 +52,13 @@ private:
 private:
     bool            procSSDBAuth(const std::shared_ptr<SSDBProtocolResponse>&, const char* requestBuffer, size_t requestLen);
     bool            procSSDBPing(const std::shared_ptr<SSDBProtocolResponse>&, const char* requestBuffer, size_t requestLen);
-    bool            procSSDBMultiSet(const std::shared_ptr<SSDBProtocolResponse>&, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen);
-    bool            procSSDBCommandOfMultiKeys(std::shared_ptr<BaseWaitReply>, const std::shared_ptr<SSDBProtocolResponse>&, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
-    bool            procSSDBSingleCommand(const std::shared_ptr<SSDBProtocolResponse>&, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBMultiSet(const std::shared_ptr<SSDBProtocolResponse>&, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            procSSDBCommandOfMultiKeys(const std::shared_ptr<BaseWaitReply>&, const std::shared_ptr<SSDBProtocolResponse>&, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
+    bool            procSSDBSingleCommand(const std::shared_ptr<SSDBProtocolResponse>&, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
 
-    bool            processRedisSingleCommand(const std::shared_ptr<parse_tree>& parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen);
-    bool            processRedisMset(const std::shared_ptr<parse_tree>& parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen);
-    bool            processRedisCommandOfMultiKeys(std::shared_ptr<BaseWaitReply> w, const std::shared_ptr<parse_tree>& parse, std::shared_ptr<std::string> requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
+    bool            processRedisSingleCommand(const std::shared_ptr<parse_tree>& parse, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            processRedisMset(const std::shared_ptr<parse_tree>& parse, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen);
+    bool            processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWaitReply>&, const std::shared_ptr<parse_tree>& parse, const std::shared_ptr<std::string>& requestBinary, const char* requestBuffer, size_t requestLen, const char* command);
 
 private:
     void            clearShardingKVS();

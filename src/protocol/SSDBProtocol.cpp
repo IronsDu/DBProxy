@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "SocketLibFunction.h"
-#include "buffer.h"
-#include "Platform.h"
+#include <brynet/net/SocketLibFunction.h>
+#include <brynet/net/Platform.h>   
+#include <brynet/utils/buffer.h>
 #include "SSDBProtocol.h"
 
 #if defined PLATFORM_WINDOWS

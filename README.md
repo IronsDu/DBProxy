@@ -4,8 +4,10 @@ dbproxy是一个采用C++11编写的代理服务器，支持[redis](https://gith
 其主要用于扩容和提高系统负载。使用lua控制sharding，把不同的key-value映射到不同的后端redis或ssdb服务器。
 
 ## 构建
-dbproxy支持windwos和linux，需要支持 C++ 17的编译器 (主要因为`brynet`网络库使用了std::any)。
-使用`cmake . & make ` 即可构建。
+dbproxy支持windwos和linux，需要支持 C++ 11的编译器
+1. `git submodule init`
+2. `git submodule update`
+3. `cmake . & make `
 
 ## 配置文件
 dbproxy的配置文件是[Config.lua](https://github.com/IronsDu/DBProxy/blob/master/Config.lua)

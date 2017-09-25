@@ -13,7 +13,7 @@
 using namespace std;
 
 class ClientSession;
-std::vector<shared_ptr<BackendSession>>    gBackendClients;
+static std::vector<shared_ptr<BackendSession>>    gBackendClients;
 std::mutex gBackendClientsLock;
 
 BackendSession::BackendSession(int id) : mID(id)
@@ -37,14 +37,11 @@ void BackendSession::onClose()
 {
     {
         std::lock_guard<std::mutex> lock(gBackendClientsLock);
-        for (auto it = gBackendClients.begin(); it != gBackendClients.end(); ++it)
-        {
-            if ((*it).get() == this)
-            {
-                gBackendClients.erase(it);
-                break;
-            }
-        }
+        std::remove_if(gBackendClients.begin(),
+            gBackendClients.end(),
+            [=](const shared_ptr<BackendSession>& v) {
+                return v.get() == this;
+            });
     }
 
     /*  当与db server断开后，对等待此服务器响应的客户端请求设置错误(返回给客户端)  */
@@ -58,21 +55,23 @@ void BackendSession::onClose()
         }
         mPendingWaitReply.pop();
 
-        if (client != nullptr)
+        if (client == nullptr)
         {
-            const auto& eventLoop = client->getEventLoop();
-            if (eventLoop->isInLoopThread())
-            {
-                wp->setError("backend error");
-                client->processCompletedReply();
-            }
-            else
-            {
-                eventLoop->pushAsyncProc([clientCapture = std::move(client), wpCapture = std::move(wp)](){
-                    wpCapture->setError("backend error");
-                    clientCapture->processCompletedReply();
-                });
-            }
+            continue;
+        }
+
+        const auto& eventLoop = client->getEventLoop();
+        if (eventLoop->isInLoopThread())
+        {
+            wp->setError("backend error");
+            client->processCompletedReply();
+        }
+        else
+        {
+            eventLoop->pushAsyncProc([clientCapture = std::move(client), wpCapture = std::move(wp)](){
+                wpCapture->setError("backend error");
+                clientCapture->processCompletedReply();
+            });
         }
     }
 }
@@ -151,8 +150,30 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
     return totalLen;
 }
 
-void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen)
+void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply, 
+    std::shared_ptr<std::string>& responseBinary, 
+    const char* replyBuffer, 
+    size_t replyLen)
 {
+    assert(!mPendingWaitReply.empty());
+    if (mPendingWaitReply.empty())
+    {
+        return;
+    }
+
+    auto reply = mPendingWaitReply.front().lock();
+    mPendingWaitReply.pop();
+    if (reply == nullptr)
+    {
+        return;
+    }
+
+    auto client = reply->getClient();
+    if (client == nullptr)
+    {
+        return;
+    }
+
     auto netParseMsg = std::make_shared<BackendParseMsg>();
     netParseMsg->redisReply = redisReply;
     if (responseBinary != nullptr)
@@ -164,78 +185,46 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
         netParseMsg->responseMemory = std::make_shared<std::string>(replyBuffer, replyLen);
     }
 
-    if (!mPendingWaitReply.empty())
+    const auto& eventLoop = client->getEventLoop();
+    if (eventLoop->isInLoopThread())
     {
-        std::shared_ptr<ClientSession> client = nullptr;
-        auto reply = mPendingWaitReply.front().lock();
-        mPendingWaitReply.pop();
-
-        if (reply != nullptr)
+        if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
         {
-            client = reply->getClient();
+            reply->setError(netParseMsg->redisReply->reply->str);
         }
-
-        if (client != nullptr)
-        {
-            const auto& eventLoop = client->getEventLoop();
-            if (eventLoop->isInLoopThread())
-            {
-                if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
-                {
-                    reply->setError(netParseMsg->redisReply->reply->str);
-                }
-                //ssdb会在mergeAndSend时处理错误/失败的response
-                reply->onBackendReply(getSocketID(), netParseMsg);
-                client->processCompletedReply();
-            }
-            else
-            {
-                if (false)
-                {
-                    // 立即处理reply,再投递完成通知到client所在线程去处理
-                    if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
-                    {
-                        reply->setError(netParseMsg->redisReply->reply->str);
-                    }
-                    //ssdb会在mergeAndSend时处理错误/失败的response
-                    reply->onBackendReply(getSocketID(), netParseMsg);
-
-                    eventLoop->pushAsyncProc([clientCapture = std::move(client)](){
-                        clientCapture->processCompletedReply();
-                    });
-                }
-                else
-                {
-                    // 投递到client所在线程去处理reply
-                    eventLoop->pushAsyncProc([clientCapture = std::move(client),
-                        netParseMsgCapture = std::move(netParseMsg),
-                        replyCapture = std::move(reply),
-                        socketID = getSocketID()](){
-
-                        if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
-                        {
-                            replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
-                        }
-                        //ssdb会在mergeAndSend时处理错误/失败的response
-                        replyCapture->onBackendReply(socketID, netParseMsgCapture);
-
-                        clientCapture->processCompletedReply();
-                    });
-                }
-            }
-        }
+        //ssdb会在mergeAndSend时处理错误/失败的response
+        reply->onBackendReply(getSocketID(), netParseMsg);
+        client->processCompletedReply();
     }
     else
     {
-        assert(false);
+        // 投递到client所在线程去处理reply
+        eventLoop->pushAsyncProc([clientCapture = std::move(client),
+            netParseMsgCapture = std::move(netParseMsg),
+            replyCapture = std::move(reply),
+            socketID = getSocketID()](){
+
+            if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
+            {
+                replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
+            }
+            //ssdb会在mergeAndSend时处理错误/失败的response
+            replyCapture->onBackendReply(socketID, netParseMsgCapture);
+
+            clientCapture->processCompletedReply();
+        });
     }
 }
 
-void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, std::shared_ptr<string> sharedStr, const char* b, size_t len)
+void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, 
+    const std::shared_ptr<string>& sharedStr, 
+    const char* b, 
+    size_t len)
 {
+    auto tmp = sharedStr;
     if (sharedStr == nullptr)
     {
-        sharedStr = std::make_shared<std::string>(b, len);
+        tmp = std::make_shared<std::string>(b, len);
     }
 
     waitReply->addWaitServer(getSocketID());
@@ -243,13 +232,13 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, st
     if (getEventLoop()->isInLoopThread())
     {
         mPendingWaitReply.push(waitReply);
-        sendPacket(std::move(sharedStr));
+        sendPacket(tmp);
     }
     else
     {
-        getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(sharedStr)](){
+        getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
             sharedThis->mPendingWaitReply.push(std::move(waitReply));
-            sharedThis->sendPacket(std::move(sharedStrCaptupre));
+            sharedThis->sendPacket(sharedStrCaptupre);
         });
     }
 }
@@ -262,16 +251,14 @@ int BackendSession::getID() const
 shared_ptr<BackendSession> findBackendByID(int id)
 {
     std::lock_guard<std::mutex> lock(gBackendClientsLock);
-    shared_ptr<BackendSession> ret = nullptr;
 
-    for (const auto& v : gBackendClients)
+    auto it = std::find_if(gBackendClients.begin(), gBackendClients.end(), [&](const shared_ptr<BackendSession>& v) {
+        return v->getID() == id;
+    });
+    if (it != gBackendClients.end())
     {
-        if (v->getID() == id)
-        {
-            ret = v;
-            break;
-        }
+        return *it;
     }
 
-    return ret;
+    return nullptr;
 }

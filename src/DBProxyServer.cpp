@@ -1,4 +1,4 @@
-#include "Platform.h"
+#include <brynet/net/Platform.h>
 
 #ifdef PLATFORM_WINDOWS
 #include <stdlib.h>
@@ -8,8 +8,12 @@
 #include <iostream>
 #include <unordered_map>
 
-#include "SocketLibFunction.h"
-#include "ox_file.h"
+#include <brynet/net/SocketLibFunction.h>
+#include <brynet/utils/systemlib.h>
+#include <brynet/utils/ox_file.h>
+#include <brynet/net/Platform.h>
+#include <brynet/net/ListenThread.h>
+
 #include "Backend.h"
 #include "Client.h"
 
@@ -24,6 +28,7 @@ extern "C"
 #include "lua_readtable.h"
 
 using namespace std;
+using namespace brynet::net;
 
 string sharding_function;
 
@@ -108,101 +113,119 @@ const typename std::map<K, V>::mapped_type& map_at(const std::map<K, V>& m, K k)
     return it->second;
 }
 
-int main()
+int main(int argc, const char**argv)
 {
+    if (argc != 2)
     {
-        srand(static_cast<unsigned int>(time(nullptr)));
-        struct lua_State* L = nullptr;
-        int listenPort;         /*代理服务器的监听端口*/
-        ox_socket_init();
-        std::vector<std::tuple<int, string, int>> backendConfigs;
+        std::cerr << "usage: path-to-config" << std::endl;
+        exit(-1);
+    }
 
-        try
+    srand(static_cast<unsigned int>(time(nullptr)));
+    struct lua_State* L = nullptr;
+    int listenPort;         /*代理服务器的监听端口*/
+    ox_socket_init();
+    std::vector<std::tuple<int, string, int>> backendConfigs;
+
+    try
+    {
+        struct msvalue_s config(true);
+        L = luaL_newstate();
+        luaopen_base(L);
+        luaL_openlibs(L);
+        /*TODO::由启动参数指定配置路径*/
+        if (lua_tinker::dofile(L, argv[1]))
         {
-            struct msvalue_s config(true);
-            L = luaL_newstate();
-            luaopen_base(L);
-            luaL_openlibs(L);
-            /*TODO::由启动参数指定配置路径*/
-            if (lua_tinker::dofile(L, "Config.lua"))
-            {
-                aux_readluatable_byname(L, "ProxyConfig", &config);
-            }
-            else
-            {
-                throw std::runtime_error("not found lua file");
-            }
-
-            map<string, msvalue_s*>& allconfig = *config._map;
-            listenPort = atoi(map_at(allconfig, string("listenPort"))->_str.c_str());
-            sharding_function = map_at(allconfig, string("sharding_function"))->_str;
-
-            map<string, msvalue_s*>& backends = *map_at(allconfig, string("backends"))->_map;
-            
-            cout << "listen port:" << listenPort << endl;
-
-            for (auto& v : backends)
-            {
-                map<string, msvalue_s*>& oneBackend = *(v.second)->_map;
-                int id = atoi(map_at(oneBackend, string("id"))->_str.c_str());
-                string dbServerIP = map_at(oneBackend, string("ip"))->_str;
-                int port = atoi(map_at(oneBackend, string("port"))->_str.c_str());
-                backendConfigs.push_back(std::make_tuple(id, dbServerIP, port));
-
-                cout << "backend :" << id << ", ip:" << dbServerIP << ", port:" << port << endl;
-            }
+            aux_readluatable_byname(L, "ProxyConfig", &config);
         }
-        catch (const std::exception& e)
+        else
         {
-            cout << "exception:" << e.what() << endl;
-            cin.get();
-            exit(-1);
+            throw std::runtime_error("not found lua file");
         }
 
-        ox_dir_create("logs");
-        ox_dir_create("logs/DBProxyServer");
+        map<string, msvalue_s*>& allconfig = *config._map;
+        listenPort = atoi(map_at(allconfig, string("listenPort"))->_str.c_str());
+        sharding_function = map_at(allconfig, string("sharding_function"))->_str;
 
-        EventLoop mainLoop;
+        map<string, msvalue_s*>& backends = *map_at(allconfig, string("backends"))->_map;
 
-        auto server = std::make_shared<WrapTcpService>();
-        ListenThread::PTR listenThread = ListenThread::Create();
+        cout << "listen port:" << listenPort << endl;
 
-        int netWorkerThreadNum = ox_getcpunum();
-        /*开启网络线程*/
-        server->startWorkThread(netWorkerThreadNum, nullptr);
-
-        /*链接数据库服务器*/
-        for (auto& v : backendConfigs)
+        for (auto& v : backends)
         {
-            int id = std::get<0>(v);
-            string ip = std::get<1>(v);
-            int port = std::get<2>(v);
+            map<string, msvalue_s*>& oneBackend = *(v.second)->_map;
+            int id = atoi(map_at(oneBackend, string("id"))->_str.c_str());
+            string dbServerIP = map_at(oneBackend, string("ip"))->_str;
+            int port = atoi(map_at(oneBackend, string("port"))->_str.c_str());
+            backendConfigs.push_back(std::make_tuple(id, dbServerIP, port));
 
-            sock fd = ox_socket_connect(false, ip.c_str(), port);
-            auto bserver = std::make_shared<BackendSession>(id);
-            WrapAddNetSession(server, fd, bserver, -1, 32*1024*1024);
+            cout << "backend :" << id << ", ip:" << dbServerIP << ", port:" << port << endl;
         }
+    }
+    catch (const std::exception& e)
+    {
+        cout << "exception:" << e.what() << endl;
+        cin.get();
+        exit(-1);
+    }
 
-        /*开启代理服务器监听*/
-        listenThread->startListen(false, "0.0.0.0", listenPort, nullptr, nullptr, [&](int fd){
-            WrapAddNetSession(server, fd, make_shared<ClientSession>(), -1, 32 * 1024 * 1024);
-        });
+    ox_dir_create("logs");
+    ox_dir_create("logs/DBProxyServer");
 
-        while (true)
+    EventLoop mainLoop;
+
+    auto server = std::make_shared<WrapTcpService>();
+    ListenThread::PTR listenThread = ListenThread::Create();
+
+    int netWorkerThreadNum = ox_getcpunum();
+    /*开启网络线程*/
+    server->startWorkThread(netWorkerThreadNum, nullptr);
+
+    /*链接数据库服务器*/
+    for (auto& v : backendConfigs)
+    {
+        int id = std::get<0>(v);
+        string ip = std::get<1>(v);
+        int port = std::get<2>(v);
+
+        sock fd = ox_socket_connect(false, ip.c_str(), port);
+        ox_socket_nodelay(fd);
+        ox_socket_setrdsize(fd, 1024 * 1024);
+        ox_socket_setsdsize(fd, 1024 * 1024);
+        auto bserver = std::make_shared<BackendSession>(id);
+        // TODO::heartbeat
+        WrapAddNetSession(server, fd, bserver, std::chrono::milliseconds::zero(), 32 * 1024 * 1024);
+    }
+
+    /*开启代理服务器监听*/
+    listenThread->startListen(false, "0.0.0.0", listenPort, [=](int fd) {
+        ox_socket_nodelay(fd);
+        ox_socket_setrdsize(fd, 1024 * 1024);
+        ox_socket_setsdsize(fd, 1024 * 1024);
+        WrapAddNetSession(server, fd, make_shared<ClientSession>(), std::chrono::milliseconds::zero(), 32 * 1024 * 1024);
+    });
+
+    while (true)
+    {
+        if (app_kbhit())
         {
-            if (app_kbhit())
+            string input;
+            std::getline(std::cin, input);
+
+            if (input == "quit")
             {
+                std::cerr << "You enter quit will exit proxy" << std::endl;
                 break;
             }
-
-            mainLoop.loop(50);
         }
 
-        listenThread->closeListenThread();
-        server->getService()->closeService();
-        lua_close(L);
-        L = nullptr;
+        mainLoop.loop(50);
     }
+
+    listenThread->closeListenThread();
+    server->stopWorkThread();
+    lua_close(L);
+    L = nullptr;
 
     return 0;
 }
