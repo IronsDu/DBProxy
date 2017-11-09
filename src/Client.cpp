@@ -229,10 +229,9 @@ void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requ
     }
     else if (strncmp(op, "COMMAND", 7) == 0 || strncmp(op, "command", 7) == 0)
     {
-        // TODO:: test fo redis-cli
         std::shared_ptr<std::string> tmp = std::make_shared<string>("*6\r\n");
         tmp->append("$4\r\n");
-        tmp->append("get\r\n");
+        tmp->append("haha\r\n");
         tmp->append(":1\r\n");
 
         tmp->append("*1\r\n");
@@ -241,7 +240,7 @@ void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requ
         tmp->append(":1\r\n");
         tmp->append(":1\r\n");
         tmp->append(":1\r\n");
-        sendPacket(tmp);
+        send(tmp);
         return;
     }
     else if (strncmp(op, "mget", oplen) == 0)

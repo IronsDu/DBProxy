@@ -9,7 +9,6 @@
 #include <unordered_map>
 
 #include <brynet/net/SocketLibFunction.h>
-#include <brynet/utils/systemlib.h>
 #include <brynet/utils/ox_file.h>
 #include <brynet/net/Platform.h>
 #include <brynet/net/ListenThread.h>
@@ -30,7 +29,7 @@ extern "C"
 using namespace std;
 using namespace brynet::net;
 
-string sharding_function;
+static string sharding_function;
 
 bool sharding_key(struct lua_State* L, const char* str, int len, int& serverID)
 {
@@ -38,13 +37,15 @@ bool sharding_key(struct lua_State* L, const char* str, int len, int& serverID)
     return true;
 }
 
+static std::string lua_config_path;
+
 struct lua_State* malloc_luaState()
 {
     lua_State* L = luaL_newstate();
     luaopen_base(L);
     luaL_openlibs(L);
     /*TODO::由启动参数指定配置路径*/
-    lua_tinker::dofile(L, "Config.lua");
+    lua_tinker::dofile(L, lua_config_path.c_str());
     return L;
 }
 
@@ -143,6 +144,7 @@ int main(int argc, const char**argv)
             throw std::runtime_error("not found lua file");
         }
 
+        lua_config_path = argv[1];
         map<string, msvalue_s*>& allconfig = *config._map;
         listenPort = atoi(map_at(allconfig, string("listenPort"))->_str.c_str());
         sharding_function = map_at(allconfig, string("sharding_function"))->_str;
@@ -177,7 +179,7 @@ int main(int argc, const char**argv)
     auto server = std::make_shared<WrapTcpService>();
     ListenThread::PTR listenThread = ListenThread::Create();
 
-    int netWorkerThreadNum = ox_getcpunum();
+    int netWorkerThreadNum = std::thread::hardware_concurrency();
     /*开启网络线程*/
     server->startWorkThread(netWorkerThreadNum, nullptr);
 
@@ -222,7 +224,7 @@ int main(int argc, const char**argv)
         mainLoop.loop(50);
     }
 
-    listenThread->closeListenThread();
+    listenThread->stopListen();
     server->stopWorkThread();
     lua_close(L);
     L = nullptr;

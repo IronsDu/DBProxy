@@ -39,7 +39,7 @@ void RedisSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     else if (!mWaitResponses.empty())
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->send(mWaitResponses.front().responseBinary);
     }
 }
 
@@ -56,7 +56,7 @@ void RedisStatusReply::mergeAndSend(const ClientSession::PTR& client)
     std::shared_ptr<std::string> tmp = std::make_shared<string>("+");
     tmp->append(mStatus);
     tmp->append("\r\n");
-    client->sendPacket(tmp);
+    client->send(tmp);
 }
 
 RedisErrorReply::RedisErrorReply(const ClientSession::PTR& client, const char* error) : BaseWaitReply(client), mErrorCode(error)
@@ -72,7 +72,7 @@ void RedisErrorReply::mergeAndSend(const ClientSession::PTR& client)
     std::shared_ptr<std::string> tmp = std::make_shared<string>("-ERR ");
     tmp->append(mErrorCode);
     tmp->append("\r\n");
-    client->sendPacket(tmp);
+    client->send(tmp);
 }
 
 RedisWrongTypeReply::RedisWrongTypeReply(const ClientSession::PTR& client, const char* wrongType, const char* detail) :
@@ -91,7 +91,7 @@ void RedisWrongTypeReply::mergeAndSend(const ClientSession::PTR& client)
     tmp->append(" ");
     tmp->append(mWrongDetail);
     tmp->append("\r\n");
-    client->sendPacket(tmp);
+    client->send(tmp);
 }
 
 RedisMgetWaitReply::RedisMgetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -129,7 +129,7 @@ void RedisMgetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     if (mWaitResponses.size() == 1)
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->send(mWaitResponses.front().responseBinary);
         return;
     }
 
@@ -145,7 +145,7 @@ void RedisMgetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
 
     strsResponse.endl();
-    client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
+    client->send(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
 RedisMsetWaitReply::RedisMsetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -179,7 +179,7 @@ void RedisMsetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     const char* OK = "+OK\r\n";
     static int OK_LEN = strlen(OK);
 
-    client->sendPacket(OK, OK_LEN);
+    client->send(OK, OK_LEN);
 }
 
 RedisDelWaitReply::RedisDelWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -217,7 +217,7 @@ void RedisDelWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     if (mWaitResponses.size() == 1)
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->send(mWaitResponses.front().responseBinary);
         return;
     }
 
@@ -229,5 +229,5 @@ void RedisDelWaitReply::mergeAndSend(const ClientSession::PTR& client)
 
     char tmp[1024];
     int len = sprintf(tmp, ":%lld\r\n", num);
-    client->sendPacket(tmp, len);
+    client->send(tmp, len);
 }

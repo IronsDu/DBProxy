@@ -15,7 +15,7 @@ static void syncSSDBStrList(const ClientSession::PTR& client, const std::vector<
     strsResponse.writev(strList);
     strsResponse.endl();
 
-    client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
+    client->send(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
 StrListSSDBReply::StrListSSDBReply(const ClientSession::PTR& client) : BaseWaitReply(client)
@@ -29,7 +29,7 @@ void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, const BackendPar
 void StrListSSDBReply::mergeAndSend(const ClientSession::PTR& client)
 {
     mStrListResponse.endl();
-    client->sendPacket(mStrListResponse.getResult(), mStrListResponse.getResultLen());
+    client->send(mStrListResponse.getResult(), mStrListResponse.getResultLen());
 }
 
 void StrListSSDBReply::pushStr(std::string&& str)
@@ -71,7 +71,7 @@ void SSDBSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     else
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->send(mWaitResponses.front().responseBinary);
     }
 }
 
@@ -108,7 +108,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     if (mWaitResponses.size() == 1)
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->send(mWaitResponses.front().responseBinary);
         return;
     }
 
@@ -131,7 +131,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 
     if (errorReply != nullptr)
     {
-        client->sendPacket(errorReply);
+        client->send(errorReply);
     }
     else
     {
@@ -140,7 +140,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 
         response.writev(SSDB_OK, num);
         response.endl();
-        client->sendPacket(response.getResult(), response.getResultLen());
+        client->send(response.getResult(), response.getResultLen());
     }
 }
 
@@ -177,7 +177,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
     if (mWaitResponses.size() == 1)
     {
-        client->sendPacket(mWaitResponses.front().responseBinary);
+        client->send(mWaitResponses.front().responseBinary);
         return;
     }
 
@@ -195,7 +195,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 
     if (errorReply != nullptr)
     {
-        client->sendPacket(std::move(errorReply));
+        client->send(std::move(errorReply));
     }
     else
     {
@@ -209,6 +209,6 @@ void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
         }
 
         strsResponse.endl();
-        client->sendPacket(strsResponse.getResult(), strsResponse.getResultLen());
+        client->send(strsResponse.getResult(), strsResponse.getResultLen());
     }
 }

@@ -17,7 +17,7 @@ class BaseWaitReply;
 class SSDBProtocolResponse;
 
 /*  代理服务器的客户端(网络线程)网络层会话    */
-class ClientSession : public BaseNetSession, public std::enable_shared_from_this<ClientSession>
+class ClientSession : public brynet::net::BaseNetSession, public std::enable_shared_from_this<ClientSession>
 {
 public:
     typedef std::shared_ptr<ClientSession> PTR;

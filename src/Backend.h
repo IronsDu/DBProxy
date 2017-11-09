@@ -13,7 +13,7 @@ struct parse_tree;
 struct BackendParseMsg;
 
 /*  链接db服务器的(网络线程-网络层)会话  */
-class BackendSession : public BaseNetSession, public std::enable_shared_from_this<BackendSession>
+class BackendSession : public brynet::net::BaseNetSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
     explicit BackendSession(int id);

@@ -27,7 +27,6 @@ set(timer_src_list
 set(base_src_list
 	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/array.c
 	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/buffer.c
-	${PROJECT_SOURCE_DIR}/3rdparty/brynet/src/brynet/utils/systemlib.c
 )
 
 set(utils_src_list

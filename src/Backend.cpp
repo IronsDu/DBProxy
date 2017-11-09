@@ -232,13 +232,13 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
     if (getEventLoop()->isInLoopThread())
     {
         mPendingWaitReply.push(waitReply);
-        sendPacket(tmp);
+        send(tmp);
     }
     else
     {
         getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
             sharedThis->mPendingWaitReply.push(std::move(waitReply));
-            sharedThis->sendPacket(sharedStrCaptupre);
+            sharedThis->send(sharedStrCaptupre);
         });
     }
 }
