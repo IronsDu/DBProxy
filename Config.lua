@@ -1,6 +1,6 @@
 ProxyConfig = {
 	backends = {
-		{id = 0, ip = "127.0.0.1", port = "6379"}
+		{id = 0, ip = "127.0.0.1", port = 6379}
 	},
 
 	listenPort = 9999,			--对外（提供代理功能）的监听端口

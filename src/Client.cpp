@@ -7,27 +7,21 @@
 #include "SSDBWaitReply.h"
 #include "RedisWaitReply.h"
 
-extern "C"
-{
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "luaconf.h"
-};
-
 #include "defer.h"
 #include "Client.h"
 
-extern bool sharding_key(struct lua_State*, const char* str, int len, int& serverID);
-extern struct lua_State* malloc_luaState();
-
 using namespace std;
 
-ClientSession::ClientSession()
+ClientSession::ClientSession(brynet::net::TCPSession::PTR session,
+    sol::state state,
+    std::string shardingFunction)
+    :
+    BaseSession(session),
+    mLuaState(std::move(state)),
+    mShardingFunction(std::move(shardingFunction))
 {
     cout << "ClientSession::ClientSession()" << endl;
     mRedisParse = nullptr;
-    mLua = malloc_luaState();
     mNeedAuth = false;
     mIsAuth = false;
 }
@@ -35,13 +29,8 @@ ClientSession::ClientSession()
 ClientSession::~ClientSession()
 {
     cout << "ClientSession::~ClientSession()" << endl;
-
-    if (mLua != nullptr)
-    {
-        lua_close(mLua);
-        mLua = nullptr;
-    }
 }
+
 
 RedisProtocolRequest& ClientSession::getCacheRedisProtocol()
 {
@@ -243,27 +232,19 @@ void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requ
         send(tmp);
         return;
     }
-    else if (strncmp(op, "mget", oplen) == 0)
+    else if (strncmp(op, "mget", oplen) == 0 ||
+        strncmp(op, "del", oplen) == 0)
     {
         isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(shared_from_this()),
             mRedisParse,
             requestBinary,
             requestBuffer,
             requestLen,
-            "mget");
+            op);
     }
     else if (strncmp(op, "mset", oplen) == 0)
     {
         isSuccess = processRedisMset(mRedisParse, requestBinary, requestBuffer, requestLen);
-    }
-    else if (strncmp(op, "del", oplen) == 0)
-    {
-        isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisDelWaitReply>(shared_from_this()),
-            mRedisParse,
-            requestBinary,
-            requestBuffer,
-            requestLen,
-            "del");
     }
     else
     {
@@ -419,7 +400,7 @@ bool ClientSession::procSSDBMultiSet(const std::shared_ptr<SSDBProtocolResponse>
     {
         const Bytes* b = request->getByIndex(i);
         int serverID;
-        if (!sharding_key(mLua, b->buffer, b->len, serverID))
+        if (!shardingKey(b->buffer, b->len, serverID))
         {
             return isSuccess = false;
         }
@@ -509,7 +490,7 @@ bool ClientSession::procSSDBCommandOfMultiKeys(const std::shared_ptr<BaseWaitRep
     {
         Bytes* b = request->getByIndex(i);
         int serverID;
-        if (!sharding_key(mLua, b->buffer, b->len, serverID))
+        if (!shardingKey(b->buffer, b->len, serverID))
         {
             return isSuccess = false;
         }
@@ -575,7 +556,7 @@ bool ClientSession::procSSDBSingleCommand(const std::shared_ptr<SSDBProtocolResp
 {
     Bytes* b = request->getByIndex(1);
     int serverID;
-    if (!sharding_key(mLua, b->buffer, b->len, serverID))
+    if (!shardingKey(b->buffer, b->len, serverID))
     {
         return false;
     }
@@ -604,7 +585,7 @@ bool ClientSession::processRedisSingleCommand(const std::shared_ptr<parse_tree>&
     }
 
     int serverID;
-    if (!sharding_key(mLua, parse->reply->element[1]->str, parse->reply->element[1]->len, serverID))
+    if (!shardingKey(parse->reply->element[1]->str, parse->reply->element[1]->len, serverID))
     {
         return false;
     }
@@ -645,7 +626,7 @@ bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse,
         const char* value = parse->reply->element[i+1]->str;
         int valueLen = parse->reply->element[i+1]->len;
 
-        if (!sharding_key(mLua, key, keyLen, serverID))
+        if (!shardingKey(key, keyLen, serverID))
         {
             return false;
         }
@@ -740,7 +721,7 @@ bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWai
         const char* key = parse->reply->element[i]->str;
         int keyLen = parse->reply->element[i]->len;
 
-        if (!sharding_key(mLua, key, keyLen, serverID))
+        if (!shardingKey(key, keyLen, serverID))
         {
             return false;
         }
@@ -814,6 +795,12 @@ void ClientSession::clearShardingKVS()
     {
         v.second.clear();
     }
+}
+
+bool ClientSession::shardingKey(const char * str, int len, int & serverID)
+{
+    serverID = mLuaState[mShardingFunction](std::string(str, len));
+    return true;
 }
 
 void ClientSession::processCompletedReply()

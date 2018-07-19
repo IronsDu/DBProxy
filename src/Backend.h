@@ -6,37 +6,48 @@
 #include <vector>
 #include <string>
 
-#include <brynet/net/NetSession.h>
+#include <brynet/net/EventLoop.h>
+#include <brynet/net/WrapTCPService.h>
+
+#include "BaseSession.h"
 
 class BaseWaitReply;
 struct parse_tree;
 struct BackendParseMsg;
 
 /*  链接db服务器的(网络线程-网络层)会话  */
-class BackendSession : public brynet::net::BaseNetSession, public std::enable_shared_from_this<BackendSession>
+class BackendSession : public BaseSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
-    explicit BackendSession(int id);
+    explicit BackendSession(brynet::net::TCPSession::PTR session, int id);
     ~BackendSession();
 
-    void            forward(const std::shared_ptr<BaseWaitReply>& waitReply, const std::shared_ptr<std::string>& sharedStr, const char* b, size_t len);
-    int             getID() const;
+    void                                        forward(
+                                                    const std::shared_ptr<BaseWaitReply>& waitReply, 
+                                                    const std::shared_ptr<std::string>& sharedStr, 
+                                                    const char* b, 
+                                                    size_t len);
+    int                                         getID() const;
+
+    size_t                                      onMsg(const char* buffer, size_t len) override;
+    void                                        onEnter() override;
+    void                                        onClose() override;
 
 private:
-    virtual size_t  onMsg(const char* buffer, size_t len) override;
-    void            onEnter() override;
-    void            onClose() override;
-
-    void            processReply(const std::shared_ptr<parse_tree>& redisReply, std::shared_ptr<std::string>& responseBinary, const char* replyBuffer, size_t replyLen);
+    void                                        processReply(
+                                                    const std::shared_ptr<parse_tree>& redisReply, 
+                                                    std::shared_ptr<std::string>& responseBinary, 
+                                                    const char* replyBuffer, 
+                                                    size_t replyLen);
 
 private:
+    const int                                   mID;
     std::shared_ptr<parse_tree>                 mRedisParse;
     std::shared_ptr<std::string>                mCache;
 
     std::queue<std::weak_ptr<BaseWaitReply>>    mPendingWaitReply;
-    const int                                   mID;
 };
 
-std::shared_ptr<BackendSession>    findBackendByID(int id);
+std::shared_ptr<BackendSession>                 findBackendByID(int id);
 
 #endif

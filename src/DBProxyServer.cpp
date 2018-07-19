@@ -1,117 +1,33 @@
-#include <brynet/net/Platform.h>
-
-#ifdef PLATFORM_WINDOWS
-#include <stdlib.h>
-#include <crtdbg.h>
-#endif
-
 #include <iostream>
-#include <unordered_map>
 
+#include <brynet/net/Platform.h>
+#include <brynet/net/EventLoop.h>
 #include <brynet/net/SocketLibFunction.h>
 #include <brynet/utils/ox_file.h>
 #include <brynet/net/Platform.h>
 #include <brynet/net/ListenThread.h>
+#include <brynet/net/WrapTCPService.h>
+#include <brynet/utils/app_status.h>
+#include <sol.hpp>
 
 #include "Backend.h"
 #include "Client.h"
 
-extern "C"
-{
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-#include "luaconf.h"
-};
-#include "lua_tinker.h"
-#include "lua_readtable.h"
-
 using namespace std;
 using namespace brynet::net;
 
-static string sharding_function;
-
-bool sharding_key(struct lua_State* L, const char* str, int len, int& serverID)
+static void OnSessionEnter(BaseSession::PTR session)
 {
-    serverID = lua_tinker::call<int>(L, sharding_function.c_str(), string(str, len));   /*使用string是怕str没有结束符*/
-    return true;
-}
+    session->onEnter();
 
-static std::string lua_config_path;
+    auto tcpSession = session->getSession();
+    tcpSession->setDataCallback([session](const TCPSession::PTR& tcpSession, const char* buffer, size_t len) {
+        return session->onMsg(buffer, len);
+    });
 
-struct lua_State* malloc_luaState()
-{
-    lua_State* L = luaL_newstate();
-    luaopen_base(L);
-    luaL_openlibs(L);
-    /*TODO::由启动参数指定配置路径*/
-    lua_tinker::dofile(L, lua_config_path.c_str());
-    return L;
-}
-
-#if defined(_MSC_VER)
-#include <conio.h>
-#else
-#include <termios.h>
-#include <unistd.h>
-#include <fcntl.h>
-#endif
-
-int     app_kbhit(void)
-{
-#if defined(_MSC_VER)
-    return _kbhit();
-#else
-    struct termios oldt, newt;
-    int ch;
-    int oldf;
-
-    tcgetattr(STDIN_FILENO, &oldt);
-    newt = oldt;
-    newt.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-    ch = getchar();
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-    fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-    if (ch != EOF)
-    {
-        ungetc(ch, stdin);
-        return 1;
-    }
-
-    return 0;
-#endif
-}
-
-template<typename K, typename V>
-typename std::map<K, V>::mapped_type& map_at(std::map<K, V>& m, K k)
-{
-    auto it = m.find(k);
-    if (it == m.end())
-    {
-        string e = "not found key :" + k;
-        throw std::runtime_error(e.c_str());
-    }
-
-    return it->second;
-}
-
-template<typename K, typename V>
-const typename std::map<K, V>::mapped_type& map_at(const std::map<K, V>& m, K k)
-{
-    auto it = m.find(k);
-    if (it == m.end())
-    {
-        string e = "not found key :" + k;
-        throw std::runtime_error(e.c_str());
-    }
-
-    return it->second;
+    tcpSession->setDisConnectCallback([session](const TCPSession::PTR& tcpSession) {
+        session->onClose();
+    });
 }
 
 int main(int argc, const char**argv)
@@ -122,66 +38,50 @@ int main(int argc, const char**argv)
         exit(-1);
     }
 
+    brynet::net::base::InitSocket();
+
     srand(static_cast<unsigned int>(time(nullptr)));
-    struct lua_State* L = nullptr;
+
     int listenPort;         /*代理服务器的监听端口*/
-    ox_socket_init();
+    string shardingFunction;
+    std::string luaConfigFile;
     std::vector<std::tuple<int, string, int>> backendConfigs;
 
     try
     {
-        struct msvalue_s config(true);
-        L = luaL_newstate();
-        luaopen_base(L);
-        luaL_openlibs(L);
-        /*TODO::由启动参数指定配置路径*/
-        if (lua_tinker::dofile(L, argv[1]))
+        sol::state luaState;
+        luaState.do_file(argv[1]);
+
+        auto proxyConfig = luaState.get<sol::table>("ProxyConfig");
+
+        luaConfigFile = argv[1];
+        listenPort = proxyConfig["listenPort"];
+        shardingFunction = proxyConfig["sharding_function"];
+        sol::table backendList = proxyConfig["backends"];
+
+        for (auto& v : backendList)
         {
-            aux_readluatable_byname(L, "ProxyConfig", &config);
-        }
-        else
-        {
-            throw std::runtime_error("not found lua file");
-        }
-
-        lua_config_path = argv[1];
-        map<string, msvalue_s*>& allconfig = *config._map;
-        listenPort = atoi(map_at(allconfig, string("listenPort"))->_str.c_str());
-        sharding_function = map_at(allconfig, string("sharding_function"))->_str;
-
-        map<string, msvalue_s*>& backends = *map_at(allconfig, string("backends"))->_map;
-
-        cout << "listen port:" << listenPort << endl;
-
-        for (auto& v : backends)
-        {
-            map<string, msvalue_s*>& oneBackend = *(v.second)->_map;
-            int id = atoi(map_at(oneBackend, string("id"))->_str.c_str());
-            string dbServerIP = map_at(oneBackend, string("ip"))->_str;
-            int port = atoi(map_at(oneBackend, string("port"))->_str.c_str());
+            auto backend = v.second.as<sol::table>();
+            int id = backend["id"];
+            string dbServerIP = backend["ip"];
+            int port = backend["port"];
             backendConfigs.push_back(std::make_tuple(id, dbServerIP, port));
 
-            cout << "backend :" << id << ", ip:" << dbServerIP << ", port:" << port << endl;
+            std::cout << "backend :" << id << ", ip:" << dbServerIP << ", port:" << port << endl;
         }
     }
     catch (const std::exception& e)
     {
-        cout << "exception:" << e.what() << endl;
-        cin.get();
+        std::cerr << "exception:" << e.what() << endl;
         exit(-1);
     }
 
-    ox_dir_create("logs");
-    ox_dir_create("logs/DBProxyServer");
-
-    EventLoop mainLoop;
-
-    auto server = std::make_shared<WrapTcpService>();
-    ListenThread::PTR listenThread = ListenThread::Create();
+    auto tcpService = std::make_shared<brynet::net::WrapTcpService>();
+    auto listenThread = ListenThread::Create();
 
     int netWorkerThreadNum = std::thread::hardware_concurrency();
     /*开启网络线程*/
-    server->startWorkThread(netWorkerThreadNum, nullptr);
+    tcpService->startWorkThread(netWorkerThreadNum, nullptr);
 
     /*链接数据库服务器*/
     for (auto& v : backendConfigs)
@@ -190,21 +90,41 @@ int main(int argc, const char**argv)
         string ip = std::get<1>(v);
         int port = std::get<2>(v);
 
-        sock fd = ox_socket_connect(false, ip.c_str(), port);
-        ox_socket_nodelay(fd);
-        ox_socket_setrdsize(fd, 1024 * 1024);
-        ox_socket_setsdsize(fd, 1024 * 1024);
-        auto bserver = std::make_shared<BackendSession>(id);
-        // TODO::heartbeat
-        WrapAddNetSession(server, fd, bserver, std::chrono::milliseconds::zero(), 32 * 1024 * 1024);
+        auto fd = brynet::net::base::Connect(false, ip.c_str(), port);
+        if (fd == SOCKET_ERROR)
+        {
+            std::cerr << "connect:" << ip << ":" << port << " failed";
+            exit(-1);
+        }
+        auto socket = brynet::net::TcpSocket::Create(fd, false);
+        socket->SocketNodelay();
+        socket->SetRecvSize(1024 * 1024);
+        socket->SetSendSize(1024 * 1024);
+
+        auto enterCallback = [id](const TCPSession::PTR& session) {
+            auto bserver = std::make_shared<BackendSession>(session, id);
+            OnSessionEnter(bserver);
+        };
+        tcpService->addSession(std::move(socket),
+            brynet::net::AddSessionOption::WithMaxRecvBufferSize(1024 * 1024),
+            brynet::net::AddSessionOption::WithEnterCallback(enterCallback));
     }
 
     /*开启代理服务器监听*/
-    listenThread->startListen(false, "0.0.0.0", listenPort, [=](int fd) {
-        ox_socket_nodelay(fd);
-        ox_socket_setrdsize(fd, 1024 * 1024);
-        ox_socket_setsdsize(fd, 1024 * 1024);
-        WrapAddNetSession(server, fd, make_shared<ClientSession>(), std::chrono::milliseconds::zero(), 32 * 1024 * 1024);
+    listenThread->startListen(false, "0.0.0.0", listenPort, [=](brynet::net::TcpSocket::PTR socket) {
+        socket->SocketNodelay();
+        socket->SetRecvSize(1024 * 1024);
+        socket->SetSendSize(1024 * 1024);
+
+        auto enterCallback = [=](const TCPSession::PTR& session) {
+            sol::state state;
+            state.do_file(luaConfigFile);
+            auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
+            OnSessionEnter(client);
+        };
+        tcpService->addSession(std::move(socket),
+            brynet::net::AddSessionOption::WithMaxRecvBufferSize(1024 * 1024),
+            brynet::net::AddSessionOption::WithEnterCallback(enterCallback));
     });
 
     while (true)
@@ -221,13 +141,11 @@ int main(int argc, const char**argv)
             }
         }
 
-        mainLoop.loop(50);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     listenThread->stopListen();
-    server->stopWorkThread();
-    lua_close(L);
-    L = nullptr;
+    tcpService->stopWorkThread();
 
     return 0;
 }

@@ -16,7 +16,10 @@ class ClientSession;
 static std::vector<shared_ptr<BackendSession>>    gBackendClients;
 std::mutex gBackendClientsLock;
 
-BackendSession::BackendSession(int id) : mID(id)
+BackendSession::BackendSession(brynet::net::TCPSession::PTR session, int id)
+    :
+    BaseSession(session),
+    mID(id)
 {
     cout << "BackendSession::BackendSession" << endl;
     mCache = nullptr;
@@ -37,11 +40,16 @@ void BackendSession::onClose()
 {
     {
         std::lock_guard<std::mutex> lock(gBackendClientsLock);
-        std::remove_if(gBackendClients.begin(),
+        const auto oldEnd = gBackendClients.end();
+        const auto newEnd = std::remove_if(gBackendClients.begin(),
             gBackendClients.end(),
             [=](const shared_ptr<BackendSession>& v) {
                 return v.get() == this;
             });
+        if (newEnd != oldEnd)
+        {
+            gBackendClients.erase(newEnd, oldEnd);
+        }
     }
 
     /*  当与db server断开后，对等待此服务器响应的客户端请求设置错误(返回给客户端)  */
@@ -60,7 +68,11 @@ void BackendSession::onClose()
             continue;
         }
 
-        const auto& eventLoop = client->getEventLoop();
+        auto eventLoop = client->getEventLoop();
+        if (eventLoop == nullptr)
+        {
+            continue;
+        }
         if (eventLoop->isInLoopThread())
         {
             wp->setError("backend error");
@@ -185,7 +197,12 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
         netParseMsg->responseMemory = std::make_shared<std::string>(replyBuffer, replyLen);
     }
 
-    const auto& eventLoop = client->getEventLoop();
+    auto eventLoop = client->getEventLoop();
+    if (eventLoop == nullptr)
+    {
+        return;
+    }
+
     if (eventLoop->isInLoopThread())
     {
         if (netParseMsg->redisReply != nullptr && netParseMsg->redisReply->type == REDIS_REPLY_ERROR)
@@ -229,14 +246,20 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
 
     waitReply->addWaitServer(getSocketID());
 
-    if (getEventLoop()->isInLoopThread())
+    auto eventLoop = getEventLoop();
+    if (eventLoop == nullptr)
+    {
+        return;
+    }
+
+    if (eventLoop->isInLoopThread())
     {
         mPendingWaitReply.push(waitReply);
         send(tmp);
     }
     else
     {
-        getEventLoop()->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
+        eventLoop->pushAsyncProc([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
             sharedThis->mPendingWaitReply.push(std::move(waitReply));
             sharedThis->send(sharedStrCaptupre);
         });
@@ -252,7 +275,7 @@ shared_ptr<BackendSession> findBackendByID(int id)
 {
     std::lock_guard<std::mutex> lock(gBackendClientsLock);
 
-    auto it = std::find_if(gBackendClients.begin(), gBackendClients.end(), [&](const shared_ptr<BackendSession>& v) {
+    auto it = std::find_if(gBackendClients.begin(), gBackendClients.end(), [=](const shared_ptr<BackendSession>& v) {
         return v->getID() == id;
     });
     if (it != gBackendClients.end())
