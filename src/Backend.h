@@ -7,7 +7,7 @@
 #include <string>
 
 #include <brynet/net/EventLoop.h>
-#include <brynet/net/WrapTCPService.h>
+#include <brynet/net/TCPService.h>
 
 #include "BaseSession.h"
 
@@ -19,7 +19,7 @@ struct BackendParseMsg;
 class BackendSession : public BaseSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
-    explicit BackendSession(brynet::net::TCPSession::PTR session, int id);
+    explicit BackendSession(brynet::net::DataSocket::PTR session, int id);
     ~BackendSession();
 
     void                                        forward(

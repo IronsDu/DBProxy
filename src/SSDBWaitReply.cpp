@@ -22,7 +22,7 @@ StrListSSDBReply::StrListSSDBReply(const ClientSession::PTR& client) : BaseWaitR
 {
 }
 
-void StrListSSDBReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
+void StrListSSDBReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&)
 {
 }
 
@@ -51,11 +51,11 @@ SSDBSingleWaitReply::SSDBSingleWaitReply(const ClientSession::PTR& client) : Bas
 {
 }
 
-void SSDBSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
+void SSDBSingleWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocket == dbServerSocket)
         {
             v.responseBinary = std::move(msg->responseMemory);
             break;
@@ -79,11 +79,11 @@ SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(const ClientSession::PTR& client) :
 {
 }
 
-void SSDBMultiSetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
+void SSDBMultiSetWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID != dbServerSocketID)
+        if (v.dbServerSocket != dbServerSocket)
         {
             continue;
         }
@@ -148,11 +148,11 @@ SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(const ClientSession::PTR& client) :
 {
 }
 
-void SSDBMultiGetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
+void SSDBMultiGetWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID != dbServerSocketID)
+        if (v.dbServerSocket != dbServerSocket)
         {
             continue;
         }

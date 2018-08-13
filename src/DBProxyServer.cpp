@@ -6,7 +6,7 @@
 #include <brynet/utils/ox_file.h>
 #include <brynet/net/Platform.h>
 #include <brynet/net/ListenThread.h>
-#include <brynet/net/WrapTCPService.h>
+#include <brynet/net/TCPService.h>
 #include <brynet/utils/app_status.h>
 #include <sol.hpp>
 
@@ -21,11 +21,11 @@ static void OnSessionEnter(BaseSession::PTR session)
     session->onEnter();
 
     auto tcpSession = session->getSession();
-    tcpSession->setDataCallback([session](const TCPSession::PTR& tcpSession, const char* buffer, size_t len) {
+    tcpSession->setDataCallback([session](const char* buffer, size_t len) {
         return session->onMsg(buffer, len);
     });
 
-    tcpSession->setDisConnectCallback([session](const TCPSession::PTR& tcpSession) {
+    tcpSession->setDisConnectCallback([session](const DataSocket::PTR& tcpSession) {
         session->onClose();
     });
 }
@@ -76,12 +76,12 @@ int main(int argc, const char**argv)
         exit(-1);
     }
 
-    auto tcpService = std::make_shared<brynet::net::WrapTcpService>();
+    auto tcpService = brynet::net::TcpService::Create();
     auto listenThread = ListenThread::Create();
 
     int netWorkerThreadNum = std::thread::hardware_concurrency();
     /*开启网络线程*/
-    tcpService->startWorkThread(netWorkerThreadNum, nullptr);
+    tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
 
     /*链接数据库服务器*/
     for (auto& v : backendConfigs)
@@ -101,13 +101,13 @@ int main(int argc, const char**argv)
         socket->SetRecvSize(1024 * 1024);
         socket->SetSendSize(1024 * 1024);
 
-        auto enterCallback = [id](const TCPSession::PTR& session) {
+        auto enterCallback = [id](const DataSocket::PTR& session) {
             auto bserver = std::make_shared<BackendSession>(session, id);
             OnSessionEnter(bserver);
         };
-        tcpService->addSession(std::move(socket),
-            brynet::net::AddSessionOption::WithMaxRecvBufferSize(1024 * 1024),
-            brynet::net::AddSessionOption::WithEnterCallback(enterCallback));
+        tcpService->addDataSocket(std::move(socket),
+            brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
+            brynet::net::TcpService::AddSocketOption::WithEnterCallback(enterCallback));
     }
 
     /*开启代理服务器监听*/
@@ -116,15 +116,15 @@ int main(int argc, const char**argv)
         socket->SetRecvSize(1024 * 1024);
         socket->SetSendSize(1024 * 1024);
 
-        auto enterCallback = [=](const TCPSession::PTR& session) {
+        auto enterCallback = [=](const DataSocket::PTR& session) {
             sol::state state;
             state.do_file(luaConfigFile);
             auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
             OnSessionEnter(client);
         };
-        tcpService->addSession(std::move(socket),
-            brynet::net::AddSessionOption::WithMaxRecvBufferSize(1024 * 1024),
-            brynet::net::AddSessionOption::WithEnterCallback(enterCallback));
+        tcpService->addDataSocket(std::move(socket),
+            brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
+            brynet::net::TcpService::AddSocketOption::WithEnterCallback(enterCallback));
     });
 
     while (true)
@@ -145,7 +145,7 @@ int main(int argc, const char**argv)
     }
 
     listenThread->stopListen();
-    tcpService->stopWorkThread();
+    tcpService->stopWorkerThread();
 
     return 0;
 }

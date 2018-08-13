@@ -18,12 +18,12 @@ RedisSingleWaitReply::RedisSingleWaitReply(const ClientSession::PTR& client) : B
 {
 }
 
-void RedisSingleWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
+void RedisSingleWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     assert(mWaitResponses.size() == 1);
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID == dbServerSocketID)
+        if (v.dbServerSocket == dbServerSocket)
         {
             v.responseBinary = std::move(msg->responseMemory);
             break;
@@ -47,7 +47,7 @@ RedisStatusReply::RedisStatusReply(const ClientSession::PTR& client, const char*
 {
 }
 
-void RedisStatusReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
+void RedisStatusReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&)
 {
 }
 
@@ -63,7 +63,7 @@ RedisErrorReply::RedisErrorReply(const ClientSession::PTR& client, const char* e
 {
 }
 
-void RedisErrorReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
+void RedisErrorReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&)
 {
 }
 
@@ -80,7 +80,7 @@ RedisWrongTypeReply::RedisWrongTypeReply(const ClientSession::PTR& client, const
 {
 }
 
-void RedisWrongTypeReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
+void RedisWrongTypeReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&)
 {
 }
 
@@ -98,11 +98,11 @@ RedisMgetWaitReply::RedisMgetWaitReply(const ClientSession::PTR& client) : BaseW
 {
 }
 
-void RedisMgetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
+void RedisMgetWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID != dbServerSocketID)
+        if (v.dbServerSocket != dbServerSocket)
         {
             continue;
         }
@@ -152,11 +152,11 @@ RedisMsetWaitReply::RedisMsetWaitReply(const ClientSession::PTR& client) : BaseW
 {
 }
 
-void RedisMsetWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&)
+void RedisMsetWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID != dbServerSocketID)
+        if (v.dbServerSocket != dbServerSocket)
         {
             continue;
         }
@@ -186,11 +186,11 @@ RedisDelWaitReply::RedisDelWaitReply(const ClientSession::PTR& client) : BaseWai
 {
 }
 
-void RedisDelWaitReply::onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR& msg)
+void RedisDelWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
-        if (v.dbServerSocketID != dbServerSocketID)
+        if (v.dbServerSocket != dbServerSocket)
         {
             continue;
         }

@@ -15,8 +15,8 @@ public:
     void            pushStr(const std::string& str);
     void            pushStr(const char* str);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
-    void            mergeAndSend(const ClientSession::PTR&);
+    virtual void    onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&) override;
+    virtual void    mergeAndSend(const ClientSession::PTR&) override;
 
 private:
     SSDBProtocolRequest         mStrListResponse;
@@ -27,8 +27,8 @@ class SSDBSingleWaitReply : public BaseWaitReply
 public:
     SSDBSingleWaitReply(const ClientSession::PTR& client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
-    void            mergeAndSend(const ClientSession::PTR&);
+    virtual void    onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&) override;
+    virtual void    mergeAndSend(const ClientSession::PTR&) override;
 };
 
 class SSDBMultiSetWaitReply : public BaseWaitReply
@@ -36,8 +36,8 @@ class SSDBMultiSetWaitReply : public BaseWaitReply
 public:
     SSDBMultiSetWaitReply(const ClientSession::PTR& client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
-    void            mergeAndSend(const ClientSession::PTR&);
+    virtual void    onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&) override;
+    virtual void    mergeAndSend(const ClientSession::PTR&) override;
 };
 
 class SSDBMultiGetWaitReply : public BaseWaitReply
@@ -45,8 +45,8 @@ class SSDBMultiGetWaitReply : public BaseWaitReply
 public:
     SSDBMultiGetWaitReply(const ClientSession::PTR& client);
 private:
-    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&);
-    void            mergeAndSend(const ClientSession::PTR&);
+    virtual void    onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&) override;
+    virtual void    mergeAndSend(const ClientSession::PTR&) override;
 };
 
 typedef SSDBMultiSetWaitReply SSDBMultiDelWaitReply;

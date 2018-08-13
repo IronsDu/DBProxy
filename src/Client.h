@@ -7,7 +7,7 @@
 #include <vector>
 #include <unordered_map>
 
-#include <brynet/net/WrapTCPService.h>
+#include <brynet/net/TCPService.h>
 #include <sol.hpp>
 
 #include "protocol/SSDBProtocol.h"
@@ -25,7 +25,7 @@ public:
     typedef std::shared_ptr<ClientSession> PTR;
 
 public:
-    ClientSession(brynet::net::TCPSession::PTR session, sol::state state, std::string shardingFunction);
+    ClientSession(brynet::net::DataSocket::PTR session, sol::state state, std::string shardingFunction);
     ~ClientSession();
     void                                            processCompletedReply();
 

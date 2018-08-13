@@ -36,7 +36,7 @@ public:
 
 public:
     /*  收到db服务器的返回值 */
-    virtual void    onBackendReply(int64_t dbServerSocketID, const BackendParseMsg::PTR&) = 0;
+    virtual void    onBackendReply(brynet::net::DataSocket::PTR, const BackendParseMsg::PTR&) = 0;
     /*  当所有db服务器都返回数据后，调用此函数尝试合并返回值并发送给客户端  */
     virtual void    mergeAndSend(const ClientSession::PTR&) = 0;
 
@@ -44,7 +44,7 @@ public:
     /*  检测是否所有等待的db服务器均已返回数据    */
     bool            isAllCompleted() const;
     /*  添加一个等待的db服务器    */
-    void            addWaitServer(int64_t serverSocketID);
+    void            addWaitServer(brynet::net::DataSocket::PTR);
 
     bool            hasError() const;
     /*  设置出现错误    */
@@ -55,11 +55,10 @@ protected:
     {
         PendingResponseStatus()
         {
-            dbServerSocketID = 0;
             forceOK = false;
         }
 
-        int64_t                                 dbServerSocketID;       /*  此等待的response所在的db服务器的id    */
+        brynet::net::DataSocket::PTR            dbServerSocket;         /*  此等待的response所在的db服务器    */
         std::shared_ptr<std::string>            responseBinary;
         std::shared_ptr<SSDBProtocolResponse>   ssdbReply;              /*  解析好的ssdb response*/
         std::shared_ptr<parse_tree>             redisReply;

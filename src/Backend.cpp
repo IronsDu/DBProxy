@@ -16,7 +16,7 @@ class ClientSession;
 static std::vector<shared_ptr<BackendSession>>    gBackendClients;
 std::mutex gBackendClientsLock;
 
-BackendSession::BackendSession(brynet::net::TCPSession::PTR session, int id)
+BackendSession::BackendSession(brynet::net::DataSocket::PTR session, int id)
     :
     BaseSession(session),
     mID(id)
@@ -210,7 +210,7 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
             reply->setError(netParseMsg->redisReply->reply->str);
         }
         //ssdb会在mergeAndSend时处理错误/失败的response
-        reply->onBackendReply(getSocketID(), netParseMsg);
+        reply->onBackendReply(getSession(), netParseMsg);
         client->processCompletedReply();
     }
     else
@@ -219,14 +219,14 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
         eventLoop->pushAsyncProc([clientCapture = std::move(client),
             netParseMsgCapture = std::move(netParseMsg),
             replyCapture = std::move(reply),
-            socketID = getSocketID()](){
+            session = getSession()](){
 
             if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
             {
                 replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
             }
             //ssdb会在mergeAndSend时处理错误/失败的response
-            replyCapture->onBackendReply(socketID, netParseMsgCapture);
+            replyCapture->onBackendReply(session, netParseMsgCapture);
 
             clientCapture->processCompletedReply();
         });
@@ -244,7 +244,7 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
         tmp = std::make_shared<std::string>(b, len);
     }
 
-    waitReply->addWaitServer(getSocketID());
+    waitReply->addWaitServer(getSession());
 
     auto eventLoop = getEventLoop();
     if (eventLoop == nullptr)

@@ -15,10 +15,10 @@ const std::shared_ptr<ClientSession>& BaseWaitReply::getClient() const
     return mClient;
 }
 
-void BaseWaitReply::addWaitServer(int64_t serverSocketID)
+void BaseWaitReply::addWaitServer(brynet::net::DataSocket::PTR server)
 {
     PendingResponseStatus tmp;
-    tmp.dbServerSocketID = serverSocketID;
+    tmp.dbServerSocket = server;
     mWaitResponses.push_back(tmp);
 }
 

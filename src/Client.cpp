@@ -12,7 +12,7 @@
 
 using namespace std;
 
-ClientSession::ClientSession(brynet::net::TCPSession::PTR session,
+ClientSession::ClientSession(brynet::net::DataSocket::PTR session,
     sol::state state,
     std::string shardingFunction)
     :
