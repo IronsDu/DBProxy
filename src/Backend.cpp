@@ -271,6 +271,16 @@ int BackendSession::getID() const
     return mID;
 }
 
+std::shared_ptr<BackendSession> randomServer()
+{
+    std::lock_guard<std::mutex> lock(gBackendClientsLock);
+    if (gBackendClients.empty())
+    {
+        return nullptr;
+    }
+    return gBackendClients[std::rand() % gBackendClients.size()];
+}
+
 shared_ptr<BackendSession> findBackendByID(int id)
 {
     std::lock_guard<std::mutex> lock(gBackendClientsLock);

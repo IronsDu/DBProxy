@@ -218,18 +218,17 @@ void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requ
     }
     else if (strncmp(op, "COMMAND", 7) == 0 || strncmp(op, "command", 7) == 0)
     {
-        std::shared_ptr<std::string> tmp = std::make_shared<string>("*6\r\n");
-        tmp->append("$4\r\n");
-        tmp->append("haha\r\n");
-        tmp->append(":1\r\n");
+        isSuccess = true;
+        auto server = randomServer();
+        if (server == nullptr)
+        {
+            pushRedisErrorReply("not have any backend redis server");
+            return;
+        }
 
-        tmp->append("*1\r\n");
-        tmp->append(":1\r\n");
-
-        tmp->append(":1\r\n");
-        tmp->append(":1\r\n");
-        tmp->append(":1\r\n");
-        send(tmp);
+        BaseWaitReply::PTR waitReply = std::make_shared<RedisSingleWaitReply>(shared_from_this());
+        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+        mPendingReply.push_back(waitReply);
         return;
     }
     else if (strncmp(op, "mget", oplen) == 0 ||
