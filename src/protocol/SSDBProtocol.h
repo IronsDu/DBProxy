@@ -44,7 +44,7 @@ private:
 };
 
 /*  ssdb协议的请求格式 */
-class SSDBProtocolRequest : public brynet::NonCopyable
+class SSDBProtocolRequest : public brynet::utils::NonCopyable
 {
 public:
     SSDBProtocolRequest();

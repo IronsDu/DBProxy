@@ -1,6 +1,6 @@
 #include "BaseSession.h"
 
-BaseSession::BaseSession(brynet::net::DataSocket::PTR session)
+BaseSession::BaseSession(brynet::net::TcpConnection::Ptr session)
     :
     mSession(session)
 {
@@ -9,7 +9,7 @@ BaseSession::BaseSession(brynet::net::DataSocket::PTR session)
 BaseSession::~BaseSession()
 {}
 
-brynet::net::EventLoop::PTR BaseSession::getEventLoop() const
+brynet::net::EventLoop::Ptr BaseSession::getEventLoop() const
 {
     auto session = getSession();
     if (session == nullptr)
@@ -42,7 +42,7 @@ void BaseSession::send(const char * buffer, size_t len)
     }
 }
 
-brynet::net::DataSocket::PTR BaseSession::getSession() const
+brynet::net::TcpConnection::Ptr BaseSession::getSession() const
 {
     return mSession.lock();
 }

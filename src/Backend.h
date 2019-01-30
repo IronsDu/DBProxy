@@ -19,7 +19,7 @@ struct BackendParseMsg;
 class BackendSession : public BaseSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
-    BackendSession(brynet::net::DataSocket::PTR session, int id);
+    BackendSession(brynet::net::TcpConnection::Ptr session, int id);
     ~BackendSession();
 
     void                                        forward(

@@ -25,7 +25,7 @@ public:
     typedef std::shared_ptr<ClientSession> PTR;
 
 public:
-    ClientSession(brynet::net::DataSocket::PTR session, sol::state state, std::string shardingFunction);
+    ClientSession(brynet::net::TcpConnection::Ptr session, sol::state state, std::string shardingFunction);
     ~ClientSession();
     void                                            processCompletedReply();
 

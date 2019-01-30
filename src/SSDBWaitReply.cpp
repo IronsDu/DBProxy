@@ -22,7 +22,7 @@ StrListSSDBReply::StrListSSDBReply(const ClientSession::PTR& client) : BaseWaitR
 {
 }
 
-void StrListSSDBReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR&)
+void StrListSSDBReply::onBackendReply(brynet::net::TcpConnection::Ptr dbServerSocket, const BackendParseMsg::PTR&)
 {
 }
 
@@ -51,7 +51,7 @@ SSDBSingleWaitReply::SSDBSingleWaitReply(const ClientSession::PTR& client) : Bas
 {
 }
 
-void SSDBSingleWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
+void SSDBSingleWaitReply::onBackendReply(brynet::net::TcpConnection::Ptr dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
@@ -79,7 +79,7 @@ SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(const ClientSession::PTR& client) :
 {
 }
 
-void SSDBMultiSetWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
+void SSDBMultiSetWaitReply::onBackendReply(brynet::net::TcpConnection::Ptr dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {
@@ -148,7 +148,7 @@ SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(const ClientSession::PTR& client) :
 {
 }
 
-void SSDBMultiGetWaitReply::onBackendReply(brynet::net::DataSocket::PTR dbServerSocket, const BackendParseMsg::PTR& msg)
+void SSDBMultiGetWaitReply::onBackendReply(brynet::net::TcpConnection::Ptr dbServerSocket, const BackendParseMsg::PTR& msg)
 {
     for (auto& v : mWaitResponses)
     {

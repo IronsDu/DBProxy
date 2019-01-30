@@ -25,7 +25,7 @@ static void OnSessionEnter(BaseSession::PTR session)
         return session->onMsg(buffer, len);
     });
 
-    tcpSession->setDisConnectCallback([session](const DataSocket::PTR& tcpSession) {
+    tcpSession->setDisConnectCallback([session](const TcpConnection::Ptr& tcpSession) {
         session->onClose();
     });
 }
@@ -97,32 +97,32 @@ int main(int argc, const char**argv)
             exit(-1);
         }
         auto socket = brynet::net::TcpSocket::Create(fd, false);
-        socket->SocketNodelay();
-        socket->SetRecvSize(1024 * 1024);
-        socket->SetSendSize(1024 * 1024);
+        socket->setNodelay();
+        socket->setRecvSize(1024 * 1024);
+        socket->setSendSize(1024 * 1024);
 
-        auto enterCallback = [id](const DataSocket::PTR& session) {
+        auto enterCallback = [id](const TcpConnection::Ptr& session) {
             auto bserver = std::make_shared<BackendSession>(session, id);
             OnSessionEnter(bserver);
         };
-        tcpService->addDataSocket(std::move(socket),
+        tcpService->addTcpConnection(std::move(socket),
             brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
             brynet::net::TcpService::AddSocketOption::WithEnterCallback(enterCallback));
     }
 
     /*开启代理服务器监听*/
-    listenThread->startListen(false, "0.0.0.0", listenPort, [=](brynet::net::TcpSocket::PTR socket) {
-        socket->SocketNodelay();
-        socket->SetRecvSize(1024 * 1024);
-        socket->SetSendSize(1024 * 1024);
+    listenThread->startListen(false, "0.0.0.0", listenPort, [=](brynet::net::TcpSocket::Ptr socket) {
+        socket->setNodelay();
+        socket->setRecvSize(1024 * 1024);
+        socket->setSendSize(1024 * 1024);
 
-        auto enterCallback = [=](const DataSocket::PTR& session) {
+        auto enterCallback = [=](const TcpConnection::Ptr& session) {
             sol::state state;
             state.do_file(luaConfigFile);
             auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
             OnSessionEnter(client);
         };
-        tcpService->addDataSocket(std::move(socket),
+        tcpService->addTcpConnection(std::move(socket),
             brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
             brynet::net::TcpService::AddSocketOption::WithEnterCallback(enterCallback));
     });
