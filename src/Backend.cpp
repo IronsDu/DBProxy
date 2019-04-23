@@ -80,7 +80,7 @@ void BackendSession::onClose()
         }
         else
         {
-            eventLoop->pushAsyncFunctor([clientCapture = std::move(client), wpCapture = std::move(wp)](){
+            eventLoop->runAsyncFunctor([clientCapture = std::move(client), wpCapture = std::move(wp)](){
                 wpCapture->setError("backend error");
                 clientCapture->processCompletedReply();
             });
@@ -216,7 +216,7 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
     else
     {
         // 投递到client所在线程去处理reply
-        eventLoop->pushAsyncFunctor([clientCapture = std::move(client),
+        eventLoop->runAsyncFunctor([clientCapture = std::move(client),
             netParseMsgCapture = std::move(netParseMsg),
             replyCapture = std::move(reply),
             session = getSession()](){
@@ -259,7 +259,7 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
     }
     else
     {
-        eventLoop->pushAsyncFunctor([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
+        eventLoop->runAsyncFunctor([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
             sharedThis->mPendingWaitReply.push(std::move(waitReply));
             sharedThis->send(sharedStrCaptupre);
         });

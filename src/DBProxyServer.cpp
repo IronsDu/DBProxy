@@ -77,7 +77,20 @@ int main(int argc, const char**argv)
     }
 
     auto tcpService = brynet::net::TcpService::Create();
-    auto listenThread = ListenThread::Create();
+    auto listenThread = ListenThread::Create(false, "0.0.0.0", listenPort, [=](brynet::net::TcpSocket::Ptr socket) {
+        socket->setNodelay();
+        socket->setRecvSize(1024 * 1024);
+        socket->setSendSize(1024 * 1024);
+        auto enterCallback = [=](const TcpConnection::Ptr & session) {
+            sol::state state;
+            state.do_file(luaConfigFile);
+            auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
+            OnSessionEnter(client);
+        };
+        tcpService->addTcpConnection(std::move(socket),
+            brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
+            brynet::net::TcpService::AddSocketOption::AddEnterCallback(enterCallback));
+    });
 
     int netWorkerThreadNum = std::thread::hardware_concurrency();
     /*开启网络线程*/
@@ -107,25 +120,11 @@ int main(int argc, const char**argv)
         };
         tcpService->addTcpConnection(std::move(socket),
             brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
-            brynet::net::TcpService::AddSocketOption::WithEnterCallback(enterCallback));
+            brynet::net::TcpService::AddSocketOption::AddEnterCallback(enterCallback));
     }
 
     /*开启代理服务器监听*/
-    listenThread->startListen(false, "0.0.0.0", listenPort, [=](brynet::net::TcpSocket::Ptr socket) {
-        socket->setNodelay();
-        socket->setRecvSize(1024 * 1024);
-        socket->setSendSize(1024 * 1024);
-
-        auto enterCallback = [=](const TcpConnection::Ptr& session) {
-            sol::state state;
-            state.do_file(luaConfigFile);
-            auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
-            OnSessionEnter(client);
-        };
-        tcpService->addTcpConnection(std::move(socket),
-            brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
-            brynet::net::TcpService::AddSocketOption::WithEnterCallback(enterCallback));
-    });
+    listenThread->startListen();
 
     while (true)
     {
