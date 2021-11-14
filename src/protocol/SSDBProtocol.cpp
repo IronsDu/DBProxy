@@ -1,14 +1,17 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <brynet/net/SocketLibFunction.h>
-#include <brynet/net/Platform.h>   
-#include <brynet/utils/buffer.h>
+#include <brynet/net/SocketLibFunction.hpp>
+#include <brynet/base/Platform.hpp>
+#include <brynet/base/Buffer.hpp>
+
 #include "SSDBProtocol.h"
 
 #if defined PLATFORM_WINDOWS
 #define snprintf _snprintf 
 #endif
+
+using namespace brynet::base;
 
 Status::Status() : mCacheStatus(STATUS_NONE)
 {
@@ -80,12 +83,12 @@ const std::string & Status::code() const
 
 SSDBProtocolRequest::SSDBProtocolRequest()
 {
-    m_request = ox_buffer_new(DEFAULT_SSDBPROTOCOL_LEN);
+    m_request = brynet::base::buffer_new(DEFAULT_SSDBPROTOCOL_LEN);
 }
 
 SSDBProtocolRequest::~SSDBProtocolRequest()
 {
-    ox_buffer_delete(m_request);
+    buffer_delete(m_request);
     m_request = NULL;
 }
 
@@ -131,30 +134,30 @@ void SSDBProtocolRequest::endl()
 
 void SSDBProtocolRequest::appendBlock(const char* data, size_t len)
 {
-    if (ox_buffer_getwritevalidcount(m_request) < len)
+    if (buffer_getwritevalidcount(m_request) < len)
     {
-        buffer_s* temp = ox_buffer_new(ox_buffer_getsize(m_request) + len);
-        memcpy(ox_buffer_getwriteptr(temp), ox_buffer_getreadptr(m_request), ox_buffer_getreadvalidcount(m_request));
-        ox_buffer_addwritepos(temp, ox_buffer_getreadvalidcount(m_request));
-        ox_buffer_delete(m_request);
+        brynet::base::buffer_s* temp = buffer_new(buffer_getsize(m_request) + len);
+        memcpy(buffer_getwriteptr(temp), buffer_getreadptr(m_request), buffer_getreadvalidcount(m_request));
+        buffer_addwritepos(temp, buffer_getreadvalidcount(m_request));
+        buffer_delete(m_request);
         m_request = temp;
     }
 
-    ox_buffer_write(m_request, data, len);
+    buffer_write(m_request, data, len);
 }
 
 const char* SSDBProtocolRequest::getResult()
 {
-    return ox_buffer_getreadptr(m_request);
+    return buffer_getreadptr(m_request);
 }
 int SSDBProtocolRequest::getResultLen()
 {
-    return ox_buffer_getreadvalidcount(m_request);
+    return buffer_getreadvalidcount(m_request);
 }
 
 void SSDBProtocolRequest::init()
 {
-    ox_buffer_init(m_request);
+    buffer_init(m_request);
 }
 
 SSDBProtocolResponse::~SSDBProtocolResponse()

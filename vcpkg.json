@@ -1,0 +1,25 @@
+{
+	"name": "gayrpc",
+	"version-string": "0.0.1",
+	"dependencies": [
+		{
+			"name": "brynet",
+			"version>=": "1.10.0"
+		},
+		{
+			"name": "lua",
+			"version>=": "5.3.3"
+		},
+		{
+			"name": "sol2",
+			"version>=": "3.2.2"
+		}
+	],
+	"overrides": [
+		{
+			"name": "lua",
+			"version": "5.3.3"
+		}
+	],
+	"builtin-baseline": "2b1f2ca96a0e4483f50ba605c4c6cc0243633c8d"
+}

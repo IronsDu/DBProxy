@@ -6,7 +6,8 @@
 #include <unordered_map>
 #include <stdint.h>
 
-#include <brynet/utils/NonCopyable.h>
+#include <brynet/base/Buffer.hpp>
+#include <brynet/base/NonCopyable.hpp>
 
 #define DEFAULT_SSDBPROTOCOL_LEN 1024
 
@@ -44,7 +45,7 @@ private:
 };
 
 /*  ssdb协议的请求格式 */
-class SSDBProtocolRequest : public brynet::utils::NonCopyable
+class SSDBProtocolRequest : public brynet::base::NonCopyable
 {
 public:
     SSDBProtocolRequest();
@@ -116,7 +117,7 @@ private:
         return *this;
     }
 private:
-    buffer_s*       m_request;
+    struct brynet::base::buffer_s*       m_request;
 };
 
 struct Bytes

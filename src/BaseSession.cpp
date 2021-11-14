@@ -24,7 +24,7 @@ void BaseSession::send(const std::shared_ptr<std::string>& data)
     auto session = getSession();
     if (session != nullptr)
     {
-        session->send(data);
+        session->send(data->c_str(), data->size());
     }
 }
 

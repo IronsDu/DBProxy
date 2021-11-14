@@ -6,9 +6,8 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-
-#include <brynet/net/TCPService.h>
-#include <sol.hpp>
+#include <brynet/net/TcpService.hpp>
+#include <sol/sol.hpp>
 
 #include "protocol/SSDBProtocol.h"
 #include "protocol/RedisRequest.h"

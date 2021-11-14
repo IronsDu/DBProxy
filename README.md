@@ -5,6 +5,7 @@ dbproxy是一个采用C++11编写的代理服务器，支持[redis](https://gith
 
 ## 构建
 dbproxy支持windwos和linux，需要支持 C++ 11的编译器，且需要使用`vcpkg`安装`brynet`、`lua`、`sol`.
+如果使用vcpkg，则可以直接打开文件夹工程即可构建。
 
 ## 配置文件
 dbproxy的配置文件是[Config.lua](https://github.com/IronsDu/DBProxy/blob/master/Config.lua)

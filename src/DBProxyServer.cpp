@@ -1,14 +1,14 @@
 #include <iostream>
 
-#include <brynet/net/Platform.h>
-#include <brynet/net/EventLoop.h>
-#include <brynet/net/SocketLibFunction.h>
-#include <brynet/utils/ox_file.h>
-#include <brynet/net/Platform.h>
-#include <brynet/net/ListenThread.h>
-#include <brynet/net/TCPService.h>
-#include <brynet/utils/app_status.h>
-#include <sol.hpp>
+#include <brynet/base/Platform.hpp>
+#include <brynet/net/EventLoop.hpp>
+#include <brynet/net/SocketLibFunction.hpp>
+#include <brynet/net/ListenThread.hpp>
+#include <brynet/net/TCPService.hpp>
+#include <brynet/base/AppStatus.hpp>
+#include <brynet/net/wrapper/ServiceBuilder.hpp>
+#include <brynet/net/wrapper/ConnectionBuilder.hpp>
+#include <sol/sol.hpp>
 
 #include "Backend.h"
 #include "Client.h"
@@ -21,8 +21,9 @@ static void OnSessionEnter(BaseSession::PTR session)
     session->onEnter();
 
     auto tcpSession = session->getSession();
-    tcpSession->setDataCallback([session](const char* buffer, size_t len) {
-        return session->onMsg(buffer, len);
+    tcpSession->setDataCallback([session](brynet::base::BasePacketReader& reader) {
+        session->onMsg(reader.currentBuffer(), reader.getLeft());
+        reader.consumeAll();
     });
 
     tcpSession->setDisConnectCallback([session](const TcpConnection::Ptr& tcpSession) {
@@ -76,59 +77,60 @@ int main(int argc, const char**argv)
         exit(-1);
     }
 
-    auto tcpService = brynet::net::TcpService::Create();
-    auto listenThread = ListenThread::Create(false, "0.0.0.0", listenPort, [=](brynet::net::TcpSocket::Ptr socket) {
-        socket->setNodelay();
-        socket->setRecvSize(1024 * 1024);
-        socket->setSendSize(1024 * 1024);
-        auto enterCallback = [=](const TcpConnection::Ptr & session) {
-            sol::state state;
-            state.do_file(luaConfigFile);
-            auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
-            OnSessionEnter(client);
-        };
-        tcpService->addTcpConnection(std::move(socket),
-            brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
-            brynet::net::TcpService::AddSocketOption::AddEnterCallback(enterCallback));
-    });
-
-    int netWorkerThreadNum = std::thread::hardware_concurrency();
     /*开启网络线程*/
+    auto tcpService = brynet::net::TcpService::Create();
+    int netWorkerThreadNum = std::thread::hardware_concurrency();
     tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
 
+    /*开启代理服务器监听*/
+    wrapper::ListenerBuilder listener;
+    listener.WithService(tcpService)
+        .AddSocketProcess([](TcpSocket& socket) {
+        socket.setNodelay();
+            })
+        .WithMaxRecvBufferSize(1024 * 1024)
+                .WithAddr(false, std::string("0.0.0.0"), static_cast<size_t>(listenPort))
+                .AddEnterCallback([=](const TcpConnection::Ptr& session) {
+                        sol::state state;
+                        state.do_file(luaConfigFile);
+                        auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
+                        OnSessionEnter(client);
+                    })
+                .asyncRun();
+
     /*链接数据库服务器*/
+    auto connector = AsyncConnector::Create();
+    connector->startWorkerThread();
+
     for (auto& v : backendConfigs)
     {
         int id = std::get<0>(v);
         string ip = std::get<1>(v);
         int port = std::get<2>(v);
 
-        auto fd = brynet::net::base::Connect(false, ip.c_str(), port);
-        if (fd == SOCKET_ERROR)
-        {
-            std::cerr << "connect:" << ip << ":" << port << " failed";
-            exit(-1);
-        }
-        auto socket = brynet::net::TcpSocket::Create(fd, false);
-        socket->setNodelay();
-        socket->setRecvSize(1024 * 1024);
-        socket->setSendSize(1024 * 1024);
-
         auto enterCallback = [id](const TcpConnection::Ptr& session) {
             auto bserver = std::make_shared<BackendSession>(session, id);
             OnSessionEnter(bserver);
         };
-        tcpService->addTcpConnection(std::move(socket),
-            brynet::net::TcpService::AddSocketOption::WithMaxRecvBufferSize(1024 * 1024),
-            brynet::net::TcpService::AddSocketOption::AddEnterCallback(enterCallback));
-    }
 
-    /*开启代理服务器监听*/
-    listenThread->startListen();
+        try {
+            wrapper::ConnectionBuilder connectionBuilder;
+            connectionBuilder
+                .WithService(tcpService)
+                .WithConnector(connector)
+                .WithMaxRecvBufferSize(1024 * 1024)
+                .AddEnterCallback(enterCallback)
+                .WithAddr(ip, port)
+                .asyncConnect();
+        }
+        catch (std::exception& e) {
+            std::cout << "exception :" << e.what() << std::endl;
+       }
+    }
 
     while (true)
     {
-        if (app_kbhit())
+        if (brynet::base::app_kbhit())
         {
             string input;
             std::getline(std::cin, input);
@@ -143,7 +145,7 @@ int main(int argc, const char**argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    listenThread->stopListen();
+    listener.stop();
     tcpService->stopWorkerThread();
 
     return 0;

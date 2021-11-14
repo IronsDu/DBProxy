@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include <brynet/net/TCPService.h>
+#include <brynet/net/TcpService.hpp>
 
 class BaseSession
 {

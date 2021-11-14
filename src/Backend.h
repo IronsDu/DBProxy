@@ -6,8 +6,8 @@
 #include <vector>
 #include <string>
 
-#include <brynet/net/EventLoop.h>
-#include <brynet/net/TCPService.h>
+#include <brynet/net/EventLoop.hpp>
+#include <brynet/net/TcpService.hpp>
 
 #include "BaseSession.h"
 
