@@ -34,7 +34,7 @@ void StrListSSDBReply::mergeAndSend(const ClientSession::PTR& client)
 
 void StrListSSDBReply::pushStr(std::string&& str)
 {
-    mStrListResponse.writev(str);
+    mStrListResponse.writev(std::move(str));
 }
 
 void StrListSSDBReply::pushStr(const std::string& str)

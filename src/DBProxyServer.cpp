@@ -1,13 +1,12 @@
-#include <iostream>
-
+#include <brynet/base/AppStatus.hpp>
 #include <brynet/base/Platform.hpp>
 #include <brynet/net/EventLoop.hpp>
-#include <brynet/net/SocketLibFunction.hpp>
 #include <brynet/net/ListenThread.hpp>
+#include <brynet/net/SocketLibFunction.hpp>
 #include <brynet/net/TCPService.hpp>
-#include <brynet/base/AppStatus.hpp>
-#include <brynet/net/wrapper/ServiceBuilder.hpp>
 #include <brynet/net/wrapper/ConnectionBuilder.hpp>
+#include <brynet/net/wrapper/ServiceBuilder.hpp>
+#include <iostream>
 #include <sol/sol.hpp>
 
 #include "Backend.h"
@@ -31,7 +30,7 @@ static void OnSessionEnter(BaseSession::PTR session)
     });
 }
 
-int main(int argc, const char**argv)
+int main(int argc, const char** argv)
 {
     if (argc != 2)
     {
@@ -43,7 +42,7 @@ int main(int argc, const char**argv)
 
     srand(static_cast<unsigned int>(time(nullptr)));
 
-    int listenPort;         /*代理服务器的监听端口*/
+    int listenPort;
     string shardingFunction;
     std::string luaConfigFile;
     std::vector<std::tuple<int, string, int>> backendConfigs;
@@ -77,28 +76,25 @@ int main(int argc, const char**argv)
         exit(-1);
     }
 
-    /*开启网络线程*/
     auto tcpService = brynet::net::TcpService::Create();
     int netWorkerThreadNum = std::thread::hardware_concurrency();
     tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
 
-    /*开启代理服务器监听*/
     wrapper::ListenerBuilder listener;
     listener.WithService(tcpService)
-        .AddSocketProcess([](TcpSocket& socket) {
-        socket.setNodelay();
+            .AddSocketProcess([](TcpSocket& socket) {
+                socket.setNodelay();
             })
-        .WithMaxRecvBufferSize(1024 * 1024)
-                .WithAddr(false, std::string("0.0.0.0"), static_cast<size_t>(listenPort))
-                .AddEnterCallback([=](const TcpConnection::Ptr& session) {
-                        sol::state state;
-                        state.do_file(luaConfigFile);
-                        auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
-                        OnSessionEnter(client);
-                    })
-                .asyncRun();
+            .WithMaxRecvBufferSize(1024 * 1024)
+            .WithAddr(false, std::string("0.0.0.0"), static_cast<size_t>(listenPort))
+            .AddEnterCallback([=](const TcpConnection::Ptr& session) {
+                sol::state state;
+                state.do_file(luaConfigFile);
+                auto client = std::make_shared<ClientSession>(session, std::move(state), shardingFunction);
+                OnSessionEnter(client);
+            })
+            .asyncRun();
 
-    /*链接数据库服务器*/
     auto connector = AsyncConnector::Create();
     connector->startWorkerThread();
 
@@ -113,19 +109,21 @@ int main(int argc, const char**argv)
             OnSessionEnter(bserver);
         };
 
-        try {
+        try
+        {
             wrapper::ConnectionBuilder connectionBuilder;
             connectionBuilder
-                .WithService(tcpService)
-                .WithConnector(connector)
-                .WithMaxRecvBufferSize(1024 * 1024)
-                .AddEnterCallback(enterCallback)
-                .WithAddr(ip, port)
-                .asyncConnect();
+                    .WithService(tcpService)
+                    .WithConnector(connector)
+                    .WithMaxRecvBufferSize(1024 * 1024)
+                    .AddEnterCallback(enterCallback)
+                    .WithAddr(ip, port)
+                    .asyncConnect();
         }
-        catch (std::exception& e) {
+        catch (std::exception& e)
+        {
             std::cout << "exception :" << e.what() << std::endl;
-       }
+        }
     }
 
     while (true)

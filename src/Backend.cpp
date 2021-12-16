@@ -1,25 +1,24 @@
+#include "Backend.h"
+
 #include <fstream>
-#include <memory>
 #include <iostream>
+#include <memory>
 #include <shared_mutex>
 
-#include "protocol/RedisParse.h"
 #include "Client.h"
-#include "protocol/SSDBProtocol.h"
 #include "SSDBWaitReply.h"
-
-#include "Backend.h"
+#include "protocol/RedisParse.h"
+#include "protocol/SSDBProtocol.h"
 
 using namespace std;
 
 class ClientSession;
-static std::vector<shared_ptr<BackendSession>>    gBackendClients;
+static std::vector<shared_ptr<BackendSession>> gBackendClients;
 std::mutex gBackendClientsLock;
 
 BackendSession::BackendSession(brynet::net::TcpConnection::Ptr session, int id)
-    :
-    BaseSession(session),
-    mID(id)
+    : BaseSession(session),
+      mID(id)
 {
     cout << "BackendSession::BackendSession" << endl;
     mCache = nullptr;
@@ -42,17 +41,16 @@ void BackendSession::onClose()
         std::lock_guard<std::mutex> lock(gBackendClientsLock);
         const auto oldEnd = gBackendClients.end();
         const auto newEnd = std::remove_if(gBackendClients.begin(),
-            gBackendClients.end(),
-            [=](const shared_ptr<BackendSession>& v) {
-                return v.get() == this;
-            });
+                                           gBackendClients.end(),
+                                           [=](const shared_ptr<BackendSession>& v) {
+                                               return v.get() == this;
+                                           });
         if (newEnd != oldEnd)
         {
             gBackendClients.erase(newEnd, oldEnd);
         }
     }
 
-    /*  当与db server断开后，对等待此服务器响应的客户端请求设置错误(返回给客户端)  */
     while (!mPendingWaitReply.empty())
     {
         std::shared_ptr<ClientSession> client = nullptr;
@@ -80,7 +78,7 @@ void BackendSession::onClose()
         }
         else
         {
-            eventLoop->runAsyncFunctor([clientCapture = std::move(client), wpCapture = std::move(wp)](){
+            eventLoop->runAsyncFunctor([clientCapture = std::move(client), wpCapture = std::move(wp)]() {
                 wpCapture->setError("backend error");
                 clientCapture->processCompletedReply();
             });
@@ -97,7 +95,7 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
         !IS_NUM(c))
     {
         /*  redis reply */
-        char* parseEndPos = (char*)buffer;
+        char* parseEndPos = (char*) buffer;
         char* parseStartPos = parseEndPos;
 
         while (totalLen < len)
@@ -109,7 +107,7 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
                 });
             }
 
-            int parseRet = parse(mRedisParse.get(), &parseEndPos, (char*)buffer+len);
+            int parseRet = parse(mRedisParse.get(), &parseEndPos, (char*) buffer + len);
             totalLen += (parseEndPos - parseStartPos);
 
             if (parseRet == REDIS_OK)
@@ -146,7 +144,7 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
     else
     {
         /*  ssdb reply    */
-        char* parseStartPos = (char*)buffer;
+        char* parseStartPos = (char*) buffer;
         int leftLen = len;
         int packetLen = 0;
         while ((packetLen = SSDBProtocolResponse::check_ssdb_packet(parseStartPos, leftLen)) > 0)
@@ -162,10 +160,10 @@ size_t BackendSession::onMsg(const char* buffer, size_t len)
     return totalLen;
 }
 
-void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply, 
-    std::shared_ptr<std::string>& responseBinary, 
-    const char* replyBuffer, 
-    size_t replyLen)
+void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
+                                  std::shared_ptr<std::string>& responseBinary,
+                                  const char* replyBuffer,
+                                  size_t replyLen)
 {
     assert(!mPendingWaitReply.empty());
     if (mPendingWaitReply.empty())
@@ -209,23 +207,19 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
         {
             reply->setError(netParseMsg->redisReply->reply->str);
         }
-        //ssdb会在mergeAndSend时处理错误/失败的response
         reply->onBackendReply(getSession(), netParseMsg);
         client->processCompletedReply();
     }
     else
     {
-        // 投递到client所在线程去处理reply
         eventLoop->runAsyncFunctor([clientCapture = std::move(client),
-            netParseMsgCapture = std::move(netParseMsg),
-            replyCapture = std::move(reply),
-            session = getSession()](){
-
+                                    netParseMsgCapture = std::move(netParseMsg),
+                                    replyCapture = std::move(reply),
+                                    session = getSession()]() {
             if (netParseMsgCapture->redisReply != nullptr && netParseMsgCapture->redisReply->type == REDIS_REPLY_ERROR)
             {
                 replyCapture->setError(netParseMsgCapture->redisReply->reply->str);
             }
-            //ssdb会在mergeAndSend时处理错误/失败的response
             replyCapture->onBackendReply(session, netParseMsgCapture);
 
             clientCapture->processCompletedReply();
@@ -233,10 +227,10 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
     }
 }
 
-void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply, 
-    const std::shared_ptr<string>& sharedStr, 
-    const char* b, 
-    size_t len)
+void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
+                             const std::shared_ptr<string>& sharedStr,
+                             const char* b,
+                             size_t len)
 {
     auto tmp = sharedStr;
     if (sharedStr == nullptr)
@@ -259,7 +253,7 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
     }
     else
     {
-        eventLoop->runAsyncFunctor([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)](){
+        eventLoop->runAsyncFunctor([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)]() mutable {
             sharedThis->mPendingWaitReply.push(std::move(waitReply));
             sharedThis->send(sharedStrCaptupre);
         });

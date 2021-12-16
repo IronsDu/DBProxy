@@ -1,37 +1,44 @@
+#include "SSDBProtocol.h"
+
 #include <stdlib.h>
 #include <string.h>
 
-#include <brynet/net/SocketLibFunction.hpp>
-#include <brynet/base/Platform.hpp>
 #include <brynet/base/Buffer.hpp>
-
-#include "SSDBProtocol.h"
+#include <brynet/base/Platform.hpp>
+#include <brynet/net/SocketLibFunction.hpp>
 
 #if defined PLATFORM_WINDOWS
-#define snprintf _snprintf 
+#define snprintf _snprintf
 #endif
 
 using namespace brynet::base;
 
-Status::Status() : mCacheStatus(STATUS_NONE)
+Status::Status()
+    : mCacheStatus(STATUS_NONE)
 {
 }
 
-Status::Status(const std::string& code) : mCode(code), mCacheStatus(STATUS_NONE)
-{
-    cacheCodeType();
-}
-
-Status::Status(std::string&& code) : mCode(std::move(code)), mCacheStatus(STATUS_NONE)
+Status::Status(const std::string& code)
+    : mCode(code),
+      mCacheStatus(STATUS_NONE)
 {
     cacheCodeType();
 }
 
-Status::Status(Status&& s) : mCode(std::move(s.mCode)), mCacheStatus(s.mCacheStatus)
+Status::Status(std::string&& code)
+    : mCode(std::move(code)),
+      mCacheStatus(STATUS_NONE)
+{
+    cacheCodeType();
+}
+
+Status::Status(Status&& s)
+    : mCode(std::move(s.mCode)),
+      mCacheStatus(s.mCacheStatus)
 {
 }
 
-Status& Status::operator = (Status&& s)
+Status& Status::operator=(Status&& s)
 {
     if (this != &s)
     {
@@ -76,7 +83,7 @@ bool Status::error() const
     return mCacheStatus == STATUS_ERROR;
 }
 
-const std::string & Status::code() const
+const std::string& Status::code() const
 {
     return mCode;
 }
@@ -121,7 +128,7 @@ void SSDBProtocolRequest::appendInt64(int64_t val)
 void SSDBProtocolRequest::appendStr(const std::string& str)
 {
     char len[16];
-    int num = snprintf(len, sizeof(len), "%d\n", (int)str.size());
+    int num = snprintf(len, sizeof(len), "%d\n", (int) str.size());
     appendBlock(len, num);
     appendBlock(str.c_str(), str.length());
     appendBlock("\n", 1);
@@ -178,7 +185,7 @@ void SSDBProtocolResponse::parse(const char* buffer)
         int datasize = strtol(current, &temp, 10);
         current = temp;
         current += 1;
-        Bytes tmp = { current, datasize };
+        Bytes tmp = {current, datasize};
         mBuffers.push_back(tmp);
         current += datasize;
 
@@ -186,8 +193,7 @@ void SSDBProtocolResponse::parse(const char* buffer)
 
         if (*current == '\n')
         {
-            /*  收到完整消息,ok  */
-            current += 1;         /*  跳过\n    */
+            current += 1;
             break;
         }
     }
@@ -202,14 +208,14 @@ Bytes* SSDBProtocolResponse::getByIndex(size_t index)
     else
     {
         const char* nullstr = "null";
-        static  Bytes nullbuffer = { nullstr, strlen(nullstr) + 1 };
+        static Bytes nullbuffer = {nullstr, strlen(nullstr) + 1};
         return &nullbuffer;
     }
 }
 
 void SSDBProtocolResponse::pushByte(const char* buffer, size_t len)
 {
-    Bytes tmp = { buffer, len };
+    Bytes tmp = {buffer, len};
     mBuffers.push_back(tmp);
 }
 
@@ -230,8 +236,8 @@ Status SSDBProtocolResponse::getStatus()
 
 int SSDBProtocolResponse::check_ssdb_packet(const char* buffer, size_t len)
 {
-    const char* end = buffer + len; /*  无效内存地址  */
-    const char* current = buffer;   /*  当前解析位置*/
+    const char* end = buffer + len;
+    const char* current = buffer;
 
     while (true)
     {
@@ -241,21 +247,21 @@ int SSDBProtocolResponse::check_ssdb_packet(const char* buffer, size_t len)
         {
             break;
         }
-        current = temp;         /*  跳过datasize*/
+        current = temp;
 
         if (current >= end || *current != '\n')
         {
             break;
         }
-        current += 1;         /*  跳过\n    */
-        current += datasize;  /*  跳过data  */
+        current += 1;
+        current += datasize;
 
         if (current >= end || *current != '\n')
         {
             break;
         }
 
-        current += 1;         /*  跳过\n    */
+        current += 1;
 
         if (current >= end)
         {
@@ -263,17 +269,15 @@ int SSDBProtocolResponse::check_ssdb_packet(const char* buffer, size_t len)
         }
         else if (*current == '\n')
         {
-            /*  收到完整消息,ok  */
-            current += 1;         /*  跳过\n    */
+            current += 1;
             return (current - buffer);
         }
     }
 
-    /*  非完整消息返回0  */
     return 0;
 }
 
-Status read_bytes(SSDBProtocolResponse *response, std::vector<Bytes> *ret)
+Status read_bytes(SSDBProtocolResponse* response, std::vector<Bytes>* ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -288,7 +292,7 @@ Status read_bytes(SSDBProtocolResponse *response, std::vector<Bytes> *ret)
     return status;
 }
 
-Status read_list(SSDBProtocolResponse *response, std::vector<std::string> *ret)
+Status read_list(SSDBProtocolResponse* response, std::vector<std::string>* ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -303,7 +307,7 @@ Status read_list(SSDBProtocolResponse *response, std::vector<std::string> *ret)
     return status;
 }
 
-Status read_int64(SSDBProtocolResponse *response, int64_t *ret)
+Status read_int64(SSDBProtocolResponse* response, int64_t* ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -323,7 +327,7 @@ Status read_int64(SSDBProtocolResponse *response, int64_t *ret)
     return status;
 }
 
-Status read_byte(SSDBProtocolResponse *response, Bytes *ret)
+Status read_byte(SSDBProtocolResponse* response, Bytes* ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -342,7 +346,7 @@ Status read_byte(SSDBProtocolResponse *response, Bytes *ret)
     return status;
 }
 
-Status read_str(SSDBProtocolResponse *response, std::string *ret)
+Status read_str(SSDBProtocolResponse* response, std::string* ret)
 {
     Status status = response->getStatus();
     if (status.ok())

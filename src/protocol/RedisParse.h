@@ -78,9 +78,8 @@ static int32_t parse_string(parse_tree *current, char **str, char *end) {
     redisReply *reply = current->reply;
     if (!reply->str) reply->str = current->tmp_buff;
     if (current->want) {
-        //带了长度的string
         for (c = **str; *str != end && current->want; ++(*str), c = **str, --current->want)
-            if (current->want > 2) reply->str[current->pos++] = c;//结尾的\r\n不需要
+            if (current->want > 2) reply->str[current->pos++] = c;//陆谩脦虏碌脛\r\n虏禄脨猫脪陋
         if (current->want) return REDIS_RETRY;
     }
     else {
@@ -148,7 +147,7 @@ static int32_t parse_breply(parse_tree *current, char **str, char *end) {
                 else current->break_ = '\n';
         };
         if (reply->type == REDIS_REPLY_NIL) return REDIS_OK;
-        current->want = reply->len + 2;//加上\r\n
+        current->want = reply->len + 2;//录脫脡脧\r\n
     }
 
     if (!reply->str && reply->len + 1 > SIZE_TMP_BUFF)

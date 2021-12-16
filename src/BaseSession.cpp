@@ -1,8 +1,7 @@
 #include "BaseSession.h"
 
 BaseSession::BaseSession(brynet::net::TcpConnection::Ptr session)
-    :
-    mSession(session)
+    : mSession(session)
 {
 }
 
@@ -33,7 +32,7 @@ void BaseSession::send(const std::string& data)
     send(data.data(), data.size());
 }
 
-void BaseSession::send(const char * buffer, size_t len)
+void BaseSession::send(const char* buffer, size_t len)
 {
     auto session = getSession();
     if (session != nullptr)

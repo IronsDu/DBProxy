@@ -1,10 +1,10 @@
+#include "RedisWaitReply.h"
+
 #include <assert.h>
 
 #include "Client.h"
-#include "protocol/RedisRequest.h"
 #include "protocol/RedisParse.h"
-
-#include "RedisWaitReply.h"
+#include "protocol/RedisRequest.h"
 
 using namespace std;
 
@@ -14,7 +14,8 @@ static void HelpSendError(const shared_ptr<ClientSession>& client, const string&
     tmp->mergeAndSend(client);
 }
 
-RedisSingleWaitReply::RedisSingleWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+RedisSingleWaitReply::RedisSingleWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -43,7 +44,9 @@ void RedisSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
 }
 
-RedisStatusReply::RedisStatusReply(const ClientSession::PTR& client, const char* status) : BaseWaitReply(client), mStatus(status)
+RedisStatusReply::RedisStatusReply(const ClientSession::PTR& client, const char* status)
+    : BaseWaitReply(client),
+      mStatus(status)
 {
 }
 
@@ -59,7 +62,9 @@ void RedisStatusReply::mergeAndSend(const ClientSession::PTR& client)
     client->send(tmp);
 }
 
-RedisErrorReply::RedisErrorReply(const ClientSession::PTR& client, const char* error) : BaseWaitReply(client), mErrorCode(error)
+RedisErrorReply::RedisErrorReply(const ClientSession::PTR& client, const char* error)
+    : BaseWaitReply(client),
+      mErrorCode(error)
 {
 }
 
@@ -75,8 +80,10 @@ void RedisErrorReply::mergeAndSend(const ClientSession::PTR& client)
     client->send(tmp);
 }
 
-RedisWrongTypeReply::RedisWrongTypeReply(const ClientSession::PTR& client, const char* wrongType, const char* detail) :
-    BaseWaitReply(client), mWrongType(wrongType), mWrongDetail(detail)
+RedisWrongTypeReply::RedisWrongTypeReply(const ClientSession::PTR& client, const char* wrongType, const char* detail)
+    : BaseWaitReply(client),
+      mWrongType(wrongType),
+      mWrongDetail(detail)
 {
 }
 
@@ -94,7 +101,8 @@ void RedisWrongTypeReply::mergeAndSend(const ClientSession::PTR& client)
     client->send(tmp);
 }
 
-RedisMgetWaitReply::RedisMgetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+RedisMgetWaitReply::RedisMgetWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -148,7 +156,8 @@ void RedisMgetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     client->send(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
-RedisMsetWaitReply::RedisMsetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+RedisMsetWaitReply::RedisMsetWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -161,7 +170,6 @@ void RedisMsetWaitReply::onBackendReply(brynet::net::TcpConnection::Ptr dbServer
             continue;
         }
 
-        /*  只需要强制设置成功，不需要保存任何reply数据     */
         v.forceOK = true;
         break;
     }
@@ -175,14 +183,14 @@ void RedisMsetWaitReply::mergeAndSend(const ClientSession::PTR& client)
         return;
     }
 
-    /*  mset总是成功,不需要合并后端服务器的reply   */
     const char* OK = "+OK\r\n";
     static int OK_LEN = strlen(OK);
 
     client->send(OK, OK_LEN);
 }
 
-RedisDelWaitReply::RedisDelWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+RedisDelWaitReply::RedisDelWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
