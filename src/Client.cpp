@@ -115,7 +115,6 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
             if (isFindCompleteRequest)
             {
                 continue;
-                ;
             }
 
             mRedisParse = std::shared_ptr<parse_tree>(parse_tree_new(), [](parse_tree* parse) {
@@ -424,22 +423,22 @@ bool ClientSession::procSSDBMultiSet(const std::shared_ptr<SSDBProtocolResponse>
     {
         SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
 
-        for (auto& v : mShardingTmpKVS)
+        for (const auto& [k, v] : mShardingTmpKVS)
         {
-            if (v.second.empty())
+            if (v.empty())
             {
                 continue;
             }
 
             request2Backend.init();
-            auto server = findBackendByID(v.first);
+            auto server = findBackendByID(k);
             if (server == nullptr)
             {
                 return isSuccess = false;
             }
 
             request2Backend.appendStr("multi_set");
-            for (auto& k : v.second)
+            for (const auto& k : v)
             {
                 request2Backend.appendStr(k.buffer, k.len);
             }
@@ -510,22 +509,22 @@ bool ClientSession::procSSDBCommandOfMultiKeys(const std::shared_ptr<BaseWaitRep
     {
         SSDBProtocolRequest& request2Backend = getCacheSSDBProtocol();
 
-        for (auto& v : mShardingTmpKVS)
+        for (const auto& [k, v] : mShardingTmpKVS)
         {
-            if (v.second.empty())
+            if (v.empty())
             {
                 continue;
             }
 
             request2Backend.init();
-            auto server = findBackendByID(v.first);
+            auto server = findBackendByID(k);
             if (server == nullptr)
             {
                 return isSuccess = false;
             }
 
             request2Backend.appendStr(command);
-            for (auto& k : v.second)
+            for (const auto& k : v)
             {
                 request2Backend.appendStr(k.buffer, k.len);
             }
@@ -655,14 +654,14 @@ bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse,
     {
         RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
 
-        for (auto& v : mShardingTmpKVS)
+        for (const auto& [k, v] : mShardingTmpKVS)
         {
-            if (v.second.empty())
+            if (v.empty())
             {
                 continue;
             }
 
-            auto server = findBackendByID(v.first);
+            auto server = findBackendByID(k);
             if (server == nullptr)
             {
                 return isSuccess = false;
@@ -670,7 +669,7 @@ bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse,
 
             request2Backend.init();
             request2Backend.writev("mset");
-            for (auto& k : v.second)
+            for (const auto& k : v)
             {
                 request2Backend.appendBinary(k.buffer, k.len);
             }
@@ -743,14 +742,14 @@ bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWai
     {
         RedisProtocolRequest& request2Backend = getCacheRedisProtocol();
 
-        for (const auto& v : mShardingTmpKVS)
+        for (const auto& [k, v] : mShardingTmpKVS)
         {
-            if (v.second.empty())
+            if (v.empty())
             {
                 continue;
             }
 
-            auto server = findBackendByID(v.first);
+            auto server = findBackendByID(k);
             if (server == nullptr)
             {
                 return isSuccess = false;
@@ -758,7 +757,7 @@ bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWai
 
             request2Backend.init();
             request2Backend.appendBinary(command, strlen(command));
-            for (auto& k : v.second)
+            for (const auto& k : v)
             {
                 request2Backend.appendBinary(k.buffer, k.len);
             }
@@ -773,9 +772,9 @@ bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWai
 
 void ClientSession::clearShardingKVS()
 {
-    for (auto& v : mShardingTmpKVS)
+    for (auto& [_, v] : mShardingTmpKVS)
     {
-        v.second.clear();
+        v.clear();
     }
 }
 

@@ -1,8 +1,9 @@
-#include <assert.h>
-#include "Client.h"
-
-#include "protocol/SSDBProtocol.h"
 #include "SSDBWaitReply.h"
+
+#include <assert.h>
+
+#include "Client.h"
+#include "protocol/SSDBProtocol.h"
 
 static const std::string SSDB_OK = "ok";
 static const std::string SSDB_ERROR = "error";
@@ -18,7 +19,8 @@ static void syncSSDBStrList(const ClientSession::PTR& client, const std::vector<
     client->send(strsResponse.getResult(), strsResponse.getResultLen());
 }
 
-StrListSSDBReply::StrListSSDBReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+StrListSSDBReply::StrListSSDBReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -47,7 +49,8 @@ void StrListSSDBReply::pushStr(const char* str)
     mStrListResponse.appendStr(str);
 }
 
-SSDBSingleWaitReply::SSDBSingleWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+SSDBSingleWaitReply::SSDBSingleWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -67,7 +70,7 @@ void SSDBSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
     if (!mErrorCode.empty())
     {
-        syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
+        syncSSDBStrList(client, {SSDB_ERROR, mErrorCode});
     }
     else
     {
@@ -75,7 +78,8 @@ void SSDBSingleWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
 }
 
-SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+SSDBMultiSetWaitReply::SSDBMultiSetWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -103,7 +107,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
     if (!mErrorCode.empty())
     {
-        syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
+        syncSSDBStrList(client, {SSDB_ERROR, mErrorCode});
         return;
     }
     if (mWaitResponses.size() == 1)
@@ -118,7 +122,7 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     for (auto& v : mWaitResponses)
     {
         int64_t tmp;
-        if (read_int64(v.ssdbReply.get(), &tmp).ok())
+        if (read_int64(v.ssdbReply.get(), tmp).ok())
         {
             num += tmp;
         }
@@ -144,7 +148,8 @@ void SSDBMultiSetWaitReply::mergeAndSend(const ClientSession::PTR& client)
     }
 }
 
-SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(const ClientSession::PTR& client) : BaseWaitReply(client)
+SSDBMultiGetWaitReply::SSDBMultiGetWaitReply(const ClientSession::PTR& client)
+    : BaseWaitReply(client)
 {
 }
 
@@ -172,7 +177,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 {
     if (!mErrorCode.empty())
     {
-        syncSSDBStrList(client, { SSDB_ERROR, mErrorCode });
+        syncSSDBStrList(client, {SSDB_ERROR, mErrorCode});
         return;
     }
     if (mWaitResponses.size() == 1)
@@ -186,7 +191,7 @@ void SSDBMultiGetWaitReply::mergeAndSend(const ClientSession::PTR& client)
 
     for (auto& v : mWaitResponses)
     {
-        if (!read_bytes(v.ssdbReply.get(), &kvs).ok())
+        if (!read_bytes(v.ssdbReply.get(), kvs).ok())
         {
             errorReply = std::move(v.responseBinary);
             break;

@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-class RedisProtocolRequest
+class RedisProtocolRequest final
 {
 public:
     RedisProtocolRequest() = default;
@@ -51,7 +51,7 @@ public:
         return mResult.c_str();
     }
 
-    int getResultLen() const
+    size_t getResultLen() const
     {
         return mResult.size();
     }
@@ -76,16 +76,18 @@ private:
         return *this;
     }
 
-    RedisProtocolRequest& operator<<(const int64_t& v)
+    RedisProtocolRequest& operator<<(int64_t v)
     {
         addStr(std::to_string(v));
         return *this;
     }
-    RedisProtocolRequest& operator<<(const char* const& v)
+
+    RedisProtocolRequest& operator<<(const char* const v)
     {
         addStr(v, strlen(v));
         return *this;
     }
+
     RedisProtocolRequest& operator<<(const std::string& v)
     {
         addStr(v);

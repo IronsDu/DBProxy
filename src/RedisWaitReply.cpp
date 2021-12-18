@@ -183,8 +183,8 @@ void RedisMsetWaitReply::mergeAndSend(const ClientSession::PTR& client)
         return;
     }
 
-    const char* OK = "+OK\r\n";
-    static int OK_LEN = strlen(OK);
+    const static char* OK = "+OK\r\n";
+    const static int OK_LEN = strlen(OK);
 
     client->send(OK, OK_LEN);
 }
@@ -235,7 +235,7 @@ void RedisDelWaitReply::mergeAndSend(const ClientSession::PTR& client)
         num += v.redisReply->reply->integer;
     }
 
-    char tmp[1024];
+    char tmp[100];
     int len = sprintf(tmp, ":%lld\r\n", num);
     client->send(tmp, len);
 }

@@ -9,13 +9,13 @@
 #include <unordered_map>
 #include <vector>
 
-#define DEFAULT_SSDBPROTOCOL_LEN 1024
+constexpr int DEFAULT_SSDBPROTOCOL_LEN = 1024;
 
 struct buffer_s;
 
 class Status
 {
-    enum STATUS_TYPE
+    enum class STATUS_TYPE
     {
         STATUS_NONE,
         STATUS_OK,
@@ -27,9 +27,9 @@ public:
     Status();
     Status(std::string&&);
     Status(const std::string& code);
-    Status(Status&&);
+    Status(Status&&) noexcept;
 
-    Status& operator=(Status&&);
+    Status& operator=(Status&&) noexcept;
 
     bool not_found() const;
     bool ok() const;
@@ -45,7 +45,7 @@ private:
     STATUS_TYPE mCacheStatus;
 };
 
-class SSDBProtocolRequest : public brynet::base::NonCopyable
+class SSDBProtocolRequest : private brynet::base::NonCopyable
 {
 public:
     SSDBProtocolRequest();
@@ -54,15 +54,13 @@ public:
 
     void appendStr(const char* str);
     void appendStr(const char* str, size_t len);
-
     void appendInt64(int64_t val);
-
     void appendStr(const std::string& str);
 
     void endl();
 
     const char* getResult();
-    int getResultLen();
+    size_t getResultLen();
 
     void init();
 
@@ -91,21 +89,21 @@ private:
 
     SSDBProtocolRequest& operator<<(const std::unordered_map<std::string, std::string>& kvs)
     {
-        for (auto& it : kvs)
+        for (const auto& [k, v] : kvs)
         {
-            appendStr(it.first);
-            appendStr(it.second);
+            appendStr(k);
+            appendStr(v);
         }
         return *this;
     }
 
-    SSDBProtocolRequest& operator<<(const int64_t& v)
+    SSDBProtocolRequest& operator<<(int64_t v)
     {
         appendInt64(v);
         return *this;
     }
 
-    SSDBProtocolRequest& operator<<(const char* const& v)
+    SSDBProtocolRequest& operator<<(const char* const v)
     {
         appendStr(v);
         return *this;
@@ -118,12 +116,12 @@ private:
     }
 
 private:
-    struct brynet::base::buffer_s* m_request;
+    struct brynet::base::buffer_s* m_request = nullptr;
 };
 
 struct Bytes {
-    const char* buffer;
-    int len;
+    const char* buffer = nullptr;
+    int len = 0;
 };
 
 class SSDBProtocolResponse
@@ -147,11 +145,11 @@ private:
     std::vector<Bytes> mBuffers;
 };
 
-Status read_bytes(SSDBProtocolResponse* response, std::vector<Bytes>* ret);
-Status read_list(SSDBProtocolResponse* response, std::vector<std::string>* ret);
-Status read_int64(SSDBProtocolResponse* response, int64_t* ret);
-Status read_byte(SSDBProtocolResponse* response, Bytes* ret);
-Status read_str(SSDBProtocolResponse* response, std::string* ret);
+Status read_bytes(SSDBProtocolResponse* response, std::vector<Bytes>& ret);
+Status read_list(SSDBProtocolResponse* response, std::vector<std::string>& ret);
+Status read_int64(SSDBProtocolResponse* response, int64_t& ret);
+Status read_byte(SSDBProtocolResponse* response, Bytes& ret);
+Status read_str(SSDBProtocolResponse* response, std::string& ret);
 
 
 #endif

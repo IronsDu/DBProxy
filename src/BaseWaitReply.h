@@ -12,11 +12,7 @@ class SSDBProtocolResponse;
 struct parse_tree;
 
 struct BackendParseMsg {
-    typedef std::shared_ptr<BackendParseMsg> PTR;
-
-    BackendParseMsg()
-    {
-    }
+    using PTR = std::shared_ptr<BackendParseMsg>;
 
     std::shared_ptr<parse_tree> redisReply;
     std::shared_ptr<std::string> responseMemory;
@@ -25,8 +21,8 @@ struct BackendParseMsg {
 class BaseWaitReply
 {
 public:
-    typedef std::shared_ptr<BaseWaitReply> PTR;
-    typedef std::weak_ptr<BaseWaitReply> WEAK_PTR;
+    using PTR = std::shared_ptr<BaseWaitReply>;
+    using WEAK_PTR = std::weak_ptr<BaseWaitReply>;
 
     BaseWaitReply(const ClientSession::PTR& client);
     virtual ~BaseWaitReply();
@@ -46,16 +42,11 @@ public:
 
 protected:
     struct PendingResponseStatus {
-        PendingResponseStatus()
-        {
-            forceOK = false;
-        }
-
         brynet::net::TcpConnection::Ptr dbServerSocket;
         std::shared_ptr<std::string> responseBinary;
         std::shared_ptr<SSDBProtocolResponse> ssdbReply;
         std::shared_ptr<parse_tree> redisReply;
-        bool forceOK;
+        bool forceOK = false;
     };
 
     std::vector<PendingResponseStatus> mWaitResponses;

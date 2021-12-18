@@ -8,7 +8,7 @@
 class BaseSession
 {
 public:
-    typedef std::shared_ptr<BaseSession> PTR;
+    using PTR = std::shared_ptr<BaseSession>;
 
 public:
     BaseSession(brynet::net::TcpConnection::Ptr session);

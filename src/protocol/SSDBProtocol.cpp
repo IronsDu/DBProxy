@@ -14,31 +14,31 @@
 using namespace brynet::base;
 
 Status::Status()
-    : mCacheStatus(STATUS_NONE)
+    : mCacheStatus(STATUS_TYPE::STATUS_NONE)
 {
 }
 
 Status::Status(const std::string& code)
     : mCode(code),
-      mCacheStatus(STATUS_NONE)
+      mCacheStatus(STATUS_TYPE::STATUS_NONE)
 {
     cacheCodeType();
 }
 
 Status::Status(std::string&& code)
     : mCode(std::move(code)),
-      mCacheStatus(STATUS_NONE)
+      mCacheStatus(STATUS_TYPE::STATUS_NONE)
 {
     cacheCodeType();
 }
 
-Status::Status(Status&& s)
+Status::Status(Status&& s) noexcept
     : mCode(std::move(s.mCode)),
       mCacheStatus(s.mCacheStatus)
 {
 }
 
-Status& Status::operator=(Status&& s)
+Status& Status::operator=(Status&& s) noexcept
 {
     if (this != &s)
     {
@@ -51,36 +51,36 @@ Status& Status::operator=(Status&& s)
 
 void Status::cacheCodeType()
 {
-    if (mCacheStatus == STATUS_NONE)
+    if (mCacheStatus == STATUS_TYPE::STATUS_NONE)
     {
         if (mCode == "ok")
         {
-            mCacheStatus = STATUS_OK;
+            mCacheStatus = STATUS_TYPE::STATUS_OK;
         }
         else if (mCode == "not_found")
         {
-            mCacheStatus = STATUS_NOTFOUND;
+            mCacheStatus = STATUS_TYPE::STATUS_NOTFOUND;
         }
         else
         {
-            mCacheStatus = STATUS_ERROR;
+            mCacheStatus = STATUS_TYPE::STATUS_ERROR;
         }
     }
 }
 
 bool Status::not_found() const
 {
-    return mCacheStatus == STATUS_NOTFOUND;
+    return mCacheStatus == STATUS_TYPE::STATUS_NOTFOUND;
 }
 
 bool Status::ok() const
 {
-    return mCacheStatus == STATUS_OK;
+    return mCacheStatus == STATUS_TYPE::STATUS_OK;
 }
 
 bool Status::error() const
 {
-    return mCacheStatus == STATUS_ERROR;
+    return mCacheStatus == STATUS_TYPE::STATUS_ERROR;
 }
 
 const std::string& Status::code() const
@@ -96,14 +96,14 @@ SSDBProtocolRequest::SSDBProtocolRequest()
 SSDBProtocolRequest::~SSDBProtocolRequest()
 {
     buffer_delete(m_request);
-    m_request = NULL;
+    m_request = nullptr;
 }
 
 void SSDBProtocolRequest::appendStr(const char* str)
 {
     size_t len = strlen(str);
     char lenstr[16];
-    int num = snprintf(lenstr, sizeof(len), "%d\n", len);
+    int num = snprintf(lenstr, sizeof(len), "%lld\n", len);
     appendBlock(lenstr, num);
     appendBlock(str, len);
     appendBlock("\n", 1);
@@ -112,7 +112,7 @@ void SSDBProtocolRequest::appendStr(const char* str)
 void SSDBProtocolRequest::appendStr(const char* str, size_t len)
 {
     char lenstr[16];
-    int num = snprintf(lenstr, sizeof(len), "%d\n", len);
+    int num = snprintf(lenstr, sizeof(len), "%lld\n", len);
     appendBlock(lenstr, num);
     appendBlock(str, len);
     appendBlock("\n", 1);
@@ -128,7 +128,7 @@ void SSDBProtocolRequest::appendInt64(int64_t val)
 void SSDBProtocolRequest::appendStr(const std::string& str)
 {
     char len[16];
-    int num = snprintf(len, sizeof(len), "%d\n", (int) str.size());
+    int num = snprintf(len, sizeof(len), "%lld\n", str.size());
     appendBlock(len, num);
     appendBlock(str.c_str(), str.length());
     appendBlock("\n", 1);
@@ -157,7 +157,8 @@ const char* SSDBProtocolRequest::getResult()
 {
     return buffer_getreadptr(m_request);
 }
-int SSDBProtocolRequest::getResultLen()
+
+size_t SSDBProtocolRequest::getResultLen()
 {
     return buffer_getreadvalidcount(m_request);
 }
@@ -207,7 +208,7 @@ Bytes* SSDBProtocolResponse::getByIndex(size_t index)
     }
     else
     {
-        const char* nullstr = "null";
+        const static char* nullstr = "null";
         static Bytes nullbuffer = {nullstr, strlen(nullstr) + 1};
         return &nullbuffer;
     }
@@ -277,7 +278,21 @@ int SSDBProtocolResponse::check_ssdb_packet(const char* buffer, size_t len)
     return 0;
 }
 
-Status read_bytes(SSDBProtocolResponse* response, std::vector<Bytes>* ret)
+Status read_bytes(SSDBProtocolResponse* response, std::vector<Bytes>& ret)
+{
+    Status status = response->getStatus();
+    if (status.ok())
+    {
+        for (size_t i = 1; i < response->getBuffersLen(); ++i)
+        {
+            ret.push_back(*(response->getByIndex(i)));
+        }
+    }
+
+    return status;
+}
+
+Status read_list(SSDBProtocolResponse* response, std::vector<std::string>& ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -285,29 +300,14 @@ Status read_bytes(SSDBProtocolResponse* response, std::vector<Bytes>* ret)
         for (size_t i = 1; i < response->getBuffersLen(); ++i)
         {
             Bytes* buffer = response->getByIndex(i);
-            ret->push_back(*buffer);
+            ret.emplace_back(std::string(buffer->buffer, buffer->len));
         }
     }
 
     return status;
 }
 
-Status read_list(SSDBProtocolResponse* response, std::vector<std::string>* ret)
-{
-    Status status = response->getStatus();
-    if (status.ok())
-    {
-        for (size_t i = 1; i < response->getBuffersLen(); ++i)
-        {
-            Bytes* buffer = response->getByIndex(i);
-            ret->push_back(std::string(buffer->buffer, buffer->len));
-        }
-    }
-
-    return status;
-}
-
-Status read_int64(SSDBProtocolResponse* response, int64_t* ret)
+Status read_int64(SSDBProtocolResponse* response, int64_t& ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -316,7 +316,7 @@ Status read_int64(SSDBProtocolResponse* response, int64_t* ret)
         {
             Bytes* buf = response->getByIndex(1);
             std::string temp(buf->buffer, buf->len);
-            sscanf(temp.c_str(), "%lld", ret);
+            (void) sscanf(temp.c_str(), "%lld", &ret);
         }
         else
         {
@@ -327,15 +327,14 @@ Status read_int64(SSDBProtocolResponse* response, int64_t* ret)
     return status;
 }
 
-Status read_byte(SSDBProtocolResponse* response, Bytes* ret)
+Status read_byte(SSDBProtocolResponse* response, Bytes& ret)
 {
     Status status = response->getStatus();
     if (status.ok())
     {
         if (response->getBuffersLen() >= 2)
         {
-            Bytes* buf = response->getByIndex(1);
-            *ret = *buf;
+            ret = *(response->getByIndex(1));
         }
         else
         {
@@ -346,7 +345,7 @@ Status read_byte(SSDBProtocolResponse* response, Bytes* ret)
     return status;
 }
 
-Status read_str(SSDBProtocolResponse* response, std::string* ret)
+Status read_str(SSDBProtocolResponse* response, std::string& ret)
 {
     Status status = response->getStatus();
     if (status.ok())
@@ -354,7 +353,7 @@ Status read_str(SSDBProtocolResponse* response, std::string* ret)
         if (response->getBuffersLen() >= 2)
         {
             Bytes* buf = response->getByIndex(1);
-            *ret = std::string(buf->buffer, buf->len);
+            ret = std::string(buf->buffer, buf->len);
         }
         else
         {

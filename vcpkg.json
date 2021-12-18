@@ -1,10 +1,10 @@
 {
-	"name": "gayrpc",
+	"name": "dbproxy",
 	"version-string": "0.0.1",
 	"dependencies": [
 		{
 			"name": "brynet",
-			"version>=": "1.10.0"
+			"version>=": "1.11.1#1"
 		},
 		{
 			"name": "lua",
@@ -21,5 +21,5 @@
 			"version": "5.3.3"
 		}
 	],
-	"builtin-baseline": "2b1f2ca96a0e4483f50ba605c4c6cc0243633c8d"
+	"builtin-baseline": "81c0acae22f0b7ef251f82e184aca34d2f5bd949"
 }

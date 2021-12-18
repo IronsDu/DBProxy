@@ -59,13 +59,13 @@ int main(int argc, const char** argv)
         shardingFunction = proxyConfig["sharding_function"];
         sol::table backendList = proxyConfig["backends"];
 
-        for (auto& v : backendList)
+        for (const auto& [_, v] : backendList)
         {
-            auto backend = v.second.as<sol::table>();
+            auto backend = v.as<sol::table>();
             int id = backend["id"];
             string dbServerIP = backend["ip"];
             int port = backend["port"];
-            backendConfigs.push_back(std::make_tuple(id, dbServerIP, port));
+            backendConfigs.push_back({id, dbServerIP, port});
 
             std::cout << "backend :" << id << ", ip:" << dbServerIP << ", port:" << port << endl;
         }
@@ -98,12 +98,8 @@ int main(int argc, const char** argv)
     auto connector = AsyncConnector::Create();
     connector->startWorkerThread();
 
-    for (auto& v : backendConfigs)
+    for (const auto& [id, ip, port] : backendConfigs)
     {
-        int id = std::get<0>(v);
-        string ip = std::get<1>(v);
-        int port = std::get<2>(v);
-
         auto enterCallback = [id](const TcpConnection::Ptr& session) {
             auto bserver = std::make_shared<BackendSession>(session, id);
             OnSessionEnter(bserver);
