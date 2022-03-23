@@ -2,6 +2,7 @@
 
 #include <iostream>
 
+#include <sol/sol.hpp>
 #include "Backend.h"
 #include "RedisWaitReply.h"
 #include "SSDBWaitReply.h"
@@ -19,17 +20,10 @@ ClientSession::ClientSession(brynet::net::TcpConnection::Ptr session,
       mLuaState(std::move(state)),
       mShardingFunction(std::move(shardingFunction))
 {
-    cout << "ClientSession::ClientSession()" << endl;
     mRedisParse = nullptr;
     mNeedAuth = false;
     mIsAuth = false;
 }
-
-ClientSession::~ClientSession()
-{
-    cout << "ClientSession::~ClientSession()" << endl;
-}
-
 
 RedisProtocolRequest& ClientSession::getCacheRedisProtocol()
 {

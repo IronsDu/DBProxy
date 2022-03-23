@@ -20,13 +20,7 @@ BackendSession::BackendSession(brynet::net::TcpConnection::Ptr session, int id)
     : BaseSession(session),
       mID(id)
 {
-    cout << "BackendSession::BackendSession" << endl;
     mCache = nullptr;
-}
-
-BackendSession::~BackendSession()
-{
-    cout << "BackendSession::~BackendSession" << endl;
 }
 
 void BackendSession::onEnter()

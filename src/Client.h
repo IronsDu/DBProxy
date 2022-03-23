@@ -17,14 +17,14 @@ struct parse_tree;
 class BaseWaitReply;
 class SSDBProtocolResponse;
 
-class ClientSession : public BaseSession, protected std::enable_shared_from_this<ClientSession>
+class ClientSession : public BaseSession, public std::enable_shared_from_this<ClientSession>
 {
 public:
     using PTR = std::shared_ptr<ClientSession>;
 
 public:
     ClientSession(brynet::net::TcpConnection::Ptr session, sol::state state, std::string shardingFunction);
-    ~ClientSession();
+    ~ClientSession() = default;
     void processCompletedReply();
 
     RedisProtocolRequest& getCacheRedisProtocol();

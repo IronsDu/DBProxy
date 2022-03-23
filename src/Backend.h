@@ -14,11 +14,11 @@ class BaseWaitReply;
 struct parse_tree;
 struct BackendParseMsg;
 
-class BackendSession : public BaseSession, protected std::enable_shared_from_this<BackendSession>
+class BackendSession : public BaseSession, public std::enable_shared_from_this<BackendSession>
 {
 public:
     BackendSession(brynet::net::TcpConnection::Ptr session, int id);
-    ~BackendSession();
+    ~BackendSession() = default;
 
     void forward(
             const std::shared_ptr<BaseWaitReply>& waitReply,

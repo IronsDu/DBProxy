@@ -3,7 +3,7 @@
 #include <brynet/net/EventLoop.hpp>
 #include <brynet/net/ListenThread.hpp>
 #include <brynet/net/SocketLibFunction.hpp>
-#include <brynet/net/TCPService.hpp>
+#include <brynet/net/TcpService.hpp>
 #include <brynet/net/wrapper/ConnectionBuilder.hpp>
 #include <brynet/net/wrapper/ServiceBuilder.hpp>
 #include <iostream>
@@ -18,7 +18,6 @@ using namespace brynet::net;
 static void OnSessionEnter(BaseSession::PTR session)
 {
     session->onEnter();
-
     auto tcpSession = session->getSession();
     tcpSession->setDataCallback([session](brynet::base::BasePacketReader& reader) {
         session->onMsg(reader.currentBuffer(), reader.getLeft());
@@ -76,7 +75,7 @@ int main(int argc, const char** argv)
         exit(-1);
     }
 
-    auto tcpService = brynet::net::TcpService::Create();
+    auto tcpService = brynet::net::IOThreadTcpService::Create();
     int netWorkerThreadNum = std::thread::hardware_concurrency();
     tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
 
