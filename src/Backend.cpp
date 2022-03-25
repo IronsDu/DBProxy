@@ -222,14 +222,13 @@ void BackendSession::processReply(const std::shared_ptr<parse_tree>& redisReply,
 }
 
 void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
-                             const std::shared_ptr<string>& sharedStr,
+                             std::shared_ptr<string> sharedStr,
                              const char* b,
                              size_t len)
 {
-    auto tmp = sharedStr;
     if (sharedStr == nullptr)
     {
-        tmp = std::make_shared<std::string>(b, len);
+        sharedStr = std::make_shared<std::string>(b, len);
     }
 
     waitReply->addWaitServer(getSession());
@@ -243,13 +242,13 @@ void BackendSession::forward(const std::shared_ptr<BaseWaitReply>& waitReply,
     if (eventLoop->isInLoopThread())
     {
         mPendingWaitReply.push(waitReply);
-        send(tmp);
+        send(std::move(sharedStr));
     }
     else
     {
-        eventLoop->runAsyncFunctor([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(tmp)]() mutable {
-            sharedThis->mPendingWaitReply.push(std::move(waitReply));
-            sharedThis->send(sharedStrCaptupre);
+        eventLoop->runAsyncFunctor([sharedThis = shared_from_this(), waitReply, sharedStrCaptupre = std::move(sharedStr)]() mutable {
+            sharedThis->mPendingWaitReply.push(waitReply);
+            sharedThis->send(std::move(sharedStrCaptupre));
         });
     }
 }

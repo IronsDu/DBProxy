@@ -40,7 +40,7 @@ private:
     size_t onSSDBRequestMsg(const char* buffer, size_t len);
 
     void processRedisRequest(
-            const std::shared_ptr<std::string>& requestBinary,
+            std::shared_ptr<std::string> requestBinary,
             const char* requestBuffer,
             size_t requestLen);
     void processSSDBRequest(
@@ -83,18 +83,18 @@ private:
 
     bool processRedisSingleCommand(
             const std::shared_ptr<parse_tree>& parse,
-            const std::shared_ptr<std::string>& requestBinary,
+            std::shared_ptr<std::string> requestBinary,
             const char* requestBuffer,
             size_t requestLen);
     bool processRedisMset(
             const std::shared_ptr<parse_tree>& parse,
-            const std::shared_ptr<std::string>& requestBinary,
+            std::shared_ptr<std::string> requestBinary,
             const char* requestBuffer,
             size_t requestLen);
     bool processRedisCommandOfMultiKeys(
             const std::shared_ptr<BaseWaitReply>&,
             const std::shared_ptr<parse_tree>& parse,
-            const std::shared_ptr<std::string>& requestBinary,
+            std::shared_ptr<std::string> requestBinary,
             const char* requestBuffer,
             size_t requestLen,
             const char* command);

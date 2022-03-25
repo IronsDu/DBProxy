@@ -1,8 +1,8 @@
 #include "Client.h"
 
 #include <iostream>
-
 #include <sol/sol.hpp>
+
 #include "Backend.h"
 #include "RedisWaitReply.h"
 #include "SSDBWaitReply.h"
@@ -91,7 +91,7 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
                 {
                     if (v.compare(0, v.size(), parseStartPos, v.size()) == 0)
                     {
-                        processRedisRequest(mCache, parseStartPos, v.size());
+                        processRedisRequest(nullptr, parseStartPos, v.size());
                         totalLen += v.size();
                         parseStartPos += v.size();
 
@@ -123,14 +123,12 @@ size_t ClientSession::onRedisRequestMsg(const char* buffer, size_t len)
         {
             if (mCache == nullptr)
             {
-                processRedisRequest(mCache, parseStartPos, parseEndPos - parseStartPos);
+                processRedisRequest(nullptr, parseStartPos, parseEndPos - parseStartPos);
             }
             else
             {
                 mCache->append(parseStartPos, parseEndPos - parseStartPos);
-                auto tmp = mCache->c_str();
-                auto tmpLen = mCache->size();
-                processRedisRequest(mCache, tmp, mCache->size());
+                processRedisRequest(mCache, mCache->c_str(), mCache->size());
                 mCache = nullptr;
             }
 
@@ -179,7 +177,7 @@ size_t ClientSession::onSSDBRequestMsg(const char* buffer, size_t len)
     return totalLen;
 }
 
-void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requestBinary,
+void ClientSession::processRedisRequest(std::shared_ptr<std::string> requestBinary,
                                         const char* requestBuffer,
                                         size_t requestLen)
 {
@@ -216,7 +214,7 @@ void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requ
         }
 
         BaseWaitReply::PTR waitReply = std::make_shared<RedisSingleWaitReply>(shared_from_this());
-        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+        server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
         mPendingReply.push_back(waitReply);
         return;
     }
@@ -225,18 +223,18 @@ void ClientSession::processRedisRequest(const std::shared_ptr<std::string>& requ
     {
         isSuccess = processRedisCommandOfMultiKeys(std::make_shared<RedisMgetWaitReply>(shared_from_this()),
                                                    mRedisParse,
-                                                   requestBinary,
+                                                   std::move(requestBinary),
                                                    requestBuffer,
                                                    requestLen,
                                                    op);
     }
     else if (strncmp(op, "mset", oplen) == 0)
     {
-        isSuccess = processRedisMset(mRedisParse, requestBinary, requestBuffer, requestLen);
+        isSuccess = processRedisMset(mRedisParse, std::move(requestBinary), requestBuffer, requestLen);
     }
     else
     {
-        isSuccess = processRedisSingleCommand(mRedisParse, requestBinary, requestBuffer, requestLen);
+        isSuccess = processRedisSingleCommand(mRedisParse, std::move(requestBinary), requestBuffer, requestLen);
     }
 }
 
@@ -556,7 +554,7 @@ bool ClientSession::procSSDBSingleCommand(const std::shared_ptr<SSDBProtocolResp
 }
 
 bool ClientSession::processRedisSingleCommand(const std::shared_ptr<parse_tree>& parse,
-                                              const std::shared_ptr<std::string>& requestBinary,
+                                              std::shared_ptr<std::string> requestBinary,
                                               const char* requestBuffer,
                                               size_t requestLen)
 {
@@ -578,14 +576,14 @@ bool ClientSession::processRedisSingleCommand(const std::shared_ptr<parse_tree>&
     }
 
     BaseWaitReply::PTR waitReply = std::make_shared<RedisSingleWaitReply>(shared_from_this());
-    server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+    server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
     mPendingReply.push_back(waitReply);
 
     return true;
 }
 
 bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse,
-                                     const std::shared_ptr<std::string>& requestBinary,
+                                     std::shared_ptr<std::string> requestBinary,
                                      const char* requestBuffer,
                                      size_t requestLen)
 {
@@ -642,7 +640,7 @@ bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse,
             return isSuccess = false;
         }
 
-        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+        server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
     }
     else
     {
@@ -679,7 +677,7 @@ bool ClientSession::processRedisMset(const std::shared_ptr<parse_tree>& parse,
 
 bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWaitReply>& waitReply,
                                                    const std::shared_ptr<parse_tree>& parse,
-                                                   const std::shared_ptr<std::string>& requestBinary,
+                                                   std::shared_ptr<std::string> requestBinary,
                                                    const char* requestBuffer,
                                                    size_t requestLen,
                                                    const char* command)
@@ -730,7 +728,7 @@ bool ClientSession::processRedisCommandOfMultiKeys(const std::shared_ptr<BaseWai
             return isSuccess = false;
         }
 
-        server->forward(waitReply, requestBinary, requestBuffer, requestLen);
+        server->forward(waitReply, std::move(requestBinary), requestBuffer, requestLen);
     }
     else
     {

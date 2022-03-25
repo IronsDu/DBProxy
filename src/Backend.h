@@ -22,7 +22,7 @@ public:
 
     void forward(
             const std::shared_ptr<BaseWaitReply>& waitReply,
-            const std::shared_ptr<std::string>& sharedStr,
+            std::shared_ptr<std::string> sharedStr,
             const char* b,
             size_t len);
     int getID() const;
