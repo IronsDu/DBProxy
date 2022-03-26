@@ -27,7 +27,6 @@ void BackendSession::onEnter()
 {
     std::lock_guard<std::mutex> lock(gBackendClientsLock);
     gBackendClients.push_back(shared_from_this());
-    std::cout << "gBackendClients len:" << gBackendClients.size() << ", this thread id:" << std::this_thread::get_id() << std::endl;
 }
 
 void BackendSession::onClose()
