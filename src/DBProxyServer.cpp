@@ -75,9 +75,41 @@ int main(int argc, const char** argv)
         exit(-1);
     }
 
+
+    auto connector = AsyncConnector::Create();
+    connector->startWorkerThread();
+
     auto tcpService = brynet::net::IOThreadTcpService::Create();
     int netWorkerThreadNum = std::thread::hardware_concurrency();
-    tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
+
+    auto eventLoops = tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
+    for (const auto& eventLoop : eventLoops)
+    {
+        auto eventLoopTspService = brynet::net::EventLoopTcpService::Create(eventLoop);
+        for (const auto& [id, ip, port] : backendConfigs)
+        {
+            auto enterCallback = [id](const TcpConnection::Ptr& session) {
+                auto bserver = std::make_shared<BackendSession>(session, id);
+                OnSessionEnter(bserver);
+            };
+
+            try
+            {
+                wrapper::ConnectionBuilder connectionBuilder;
+                connectionBuilder
+                        .WithService(eventLoopTspService)
+                        .WithConnector(connector)
+                        .WithMaxRecvBufferSize(1024 * 1024)
+                        .AddEnterCallback(enterCallback)
+                        .WithAddr(ip, port)
+                        .asyncConnect();
+            }
+            catch (std::exception& e)
+            {
+                std::cout << "exception :" << e.what() << std::endl;
+            }
+        }
+    }
 
     wrapper::ListenerBuilder listener;
     listener.WithService(tcpService)
@@ -94,32 +126,6 @@ int main(int argc, const char** argv)
             })
             .asyncRun();
 
-    auto connector = AsyncConnector::Create();
-    connector->startWorkerThread();
-
-    for (const auto& [id, ip, port] : backendConfigs)
-    {
-        auto enterCallback = [id](const TcpConnection::Ptr& session) {
-            auto bserver = std::make_shared<BackendSession>(session, id);
-            OnSessionEnter(bserver);
-        };
-
-        try
-        {
-            wrapper::ConnectionBuilder connectionBuilder;
-            connectionBuilder
-                    .WithService(tcpService)
-                    .WithConnector(connector)
-                    .WithMaxRecvBufferSize(1024 * 1024)
-                    .AddEnterCallback(enterCallback)
-                    .WithAddr(ip, port)
-                    .asyncConnect();
-        }
-        catch (std::exception& e)
-        {
-            std::cout << "exception :" << e.what() << std::endl;
-        }
-    }
 
     while (true)
     {

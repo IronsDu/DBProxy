@@ -13,8 +13,7 @@
 using namespace std;
 
 class ClientSession;
-static std::vector<shared_ptr<BackendSession>> gBackendClients;
-std::mutex gBackendClientsLock;
+thread_local std::vector<shared_ptr<BackendSession>> gBackendClients;
 
 BackendSession::BackendSession(brynet::net::TcpConnection::Ptr session, int id)
     : BaseSession(session),
@@ -25,14 +24,12 @@ BackendSession::BackendSession(brynet::net::TcpConnection::Ptr session, int id)
 
 void BackendSession::onEnter()
 {
-    std::lock_guard<std::mutex> lock(gBackendClientsLock);
     gBackendClients.push_back(shared_from_this());
 }
 
 void BackendSession::onClose()
 {
     {
-        std::lock_guard<std::mutex> lock(gBackendClientsLock);
         const auto oldEnd = gBackendClients.end();
         const auto newEnd = std::remove_if(gBackendClients.begin(),
                                            gBackendClients.end(),
@@ -261,7 +258,6 @@ int BackendSession::getID() const
 
 std::shared_ptr<BackendSession> randomServer()
 {
-    std::lock_guard<std::mutex> lock(gBackendClientsLock);
     if (gBackendClients.empty())
     {
         return nullptr;
@@ -271,8 +267,6 @@ std::shared_ptr<BackendSession> randomServer()
 
 shared_ptr<BackendSession> findBackendByID(int id)
 {
-    std::lock_guard<std::mutex> lock(gBackendClientsLock);
-
     auto it = std::find_if(gBackendClients.begin(), gBackendClients.end(), [=](const shared_ptr<BackendSession>& v) {
         return v->getID() == id;
     });
