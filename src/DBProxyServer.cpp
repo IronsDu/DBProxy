@@ -76,7 +76,7 @@ int main(int argc, const char** argv)
     }
 
     auto tcpService = brynet::net::IOThreadTcpService::Create();
-    int netWorkerThreadNum = std::thread::hardware_concurrency();
+    int netWorkerThreadNum = 2;//std::thread::hardware_concurrency();
     tcpService->startWorkerThread(netWorkerThreadNum, nullptr);
 
     wrapper::ListenerBuilder listener;
@@ -99,26 +99,29 @@ int main(int argc, const char** argv)
 
     for (const auto& [id, ip, port] : backendConfigs)
     {
-        auto enterCallback = [id](const TcpConnection::Ptr& session) {
-            auto bserver = std::make_shared<BackendSession>(session, id);
-            OnSessionEnter(bserver);
-        };
+       for ( int i = 0;i <10; i++) 
+       {
+            auto enterCallback = [id](const TcpConnection::Ptr& session) {
+                auto bserver = std::make_shared<BackendSession>(session, id);
+                OnSessionEnter(bserver);
+            };
 
-        try
-        {
-            wrapper::ConnectionBuilder connectionBuilder;
-            connectionBuilder
-                    .WithService(tcpService)
-                    .WithConnector(connector)
-                    .WithMaxRecvBufferSize(1024 * 1024)
-                    .AddEnterCallback(enterCallback)
-                    .WithAddr(ip, port)
-                    .asyncConnect();
-        }
-        catch (std::exception& e)
-        {
-            std::cout << "exception :" << e.what() << std::endl;
-        }
+            try
+            {
+                wrapper::ConnectionBuilder connectionBuilder;
+                connectionBuilder
+                        .WithService(tcpService)
+                        .WithConnector(connector)
+                        .WithMaxRecvBufferSize(1024 * 1024)
+                        .AddEnterCallback(enterCallback)
+                        .WithAddr(ip, port)
+                        .asyncConnect();
+            }
+            catch (std::exception& e)
+            {
+                std::cout << "exception :" << e.what() << std::endl;
+            }
+       }
     }
 
     while (true)

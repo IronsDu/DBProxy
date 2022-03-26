@@ -45,6 +45,7 @@ void ClientSession::onClose()
 
 size_t ClientSession::onMsg(const char* buffer, size_t len)
 {
+    std::cout << "receive client msg, this thread:" << std::this_thread::get_id()  << std::endl;
     size_t totalLen = 0;
 
     if (mRedisParse != nullptr ||
