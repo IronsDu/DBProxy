@@ -55,7 +55,7 @@ int main(int argc, const char** argv)
 
         luaConfigFile = argv[1];
         listenPort = proxyConfig["listenPort"];
-        shardingFunction = proxyConfig["sharding_function"];
+        shardingFunction = proxyConfig["sharding_function"].get<std::string>();
         sol::table backendList = proxyConfig["backends"];
 
         for (const auto& [_, v] : backendList)
